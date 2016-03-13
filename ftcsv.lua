@@ -1,5 +1,28 @@
+---------------
+-- ## ftcsv, a fairly fast csv library written in pure lua
+--
+-- It works well for CSVs that can easily be fully loaded into memory (easily
+-- up to a hundred MBs). Currently, there isn't a "large" file mode with
+-- proper readers and writers for ingesting CSVs in bulk with a fixed amount
+-- of memory
+--
+-- @author Shakil Thakur
+-- @copyright 2016
+-- @license MIT
+---------------
+
 local ftcsv = {}
 
+-- load an entire file into memory
+local function loadFile(textFile)
+    local file = io.open(textFile, "r")
+    if not file then error("File not found at " .. textFile) end
+    local allLines = file:read("*all")
+    file:close()
+    return allLines
+end
+
+-- finds the end of an escape sequence
 local function findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
     local doubleQuoteEscape = doubleQuoteEscape
     while i <= inputLength do
@@ -20,19 +43,23 @@ local function findClosingQuote(i, inputLength, inputString, quote, doubleQuoteE
     end
 end
 
+-- creates a new field and adds it to the main table
 local function createNewField(inputString, quote, fieldStart, i, line, fieldNum, doubleQuoteEscape, fieldsToKeep)
     -- print(lineNum, fieldNum, fieldStart, i-1)
     -- so, if we just recently de-escaped, we don't want the trailing \"
     -- if fieldsToKeep == nil then
     -- local fieldsToKeep = fieldsToKeep
+    local output = line[fieldNum]
     if fieldsToKeep == nil or fieldsToKeep[fieldNum] then
         -- print(fieldsToKeep)
+        -- print("b4", i, fieldNum, line[fieldNum])
         if string.byte(inputString, i-1) == quote then
             -- print("Skipping last \"")
             line[fieldNum] = string.sub(inputString, fieldStart, i-2)
         else
             line[fieldNum] = string.sub(inputString, fieldStart, i-1)
         end
+        -- print("aft", i, fieldNum, line[fieldNum])
         -- remove the double quotes (if they existed)
         if doubleQuoteEscape then
             -- print("QUOTE REPLACE")
@@ -43,11 +70,13 @@ local function createNewField(inputString, quote, fieldStart, i, line, fieldNum,
     end
 end
 
+-- creates the headers after reading through to the first line
 local function createHeaders(line, rename, fieldsToKeep)
     -- print("CREATING HEADERS")
     local headers = {}
     for i = 1, #line do
         if rename[line[i]] then
+            -- print("RENAMING", line[i], rename[line[i]])
             headers[i] = rename[line[i]]
         else
             headers[i] = line[i]
@@ -61,39 +90,46 @@ local function createHeaders(line, rename, fieldsToKeep)
     return headers, 0, true, fieldsToKeep
 end
 
-function ftcsv.decode(inputString, separator, options)
+-- main function used to parse
+function ftcsv.parse(inputFile, delimiter, options)
     -- each line in outResults holds another table
     local outResults = {}
     outResults[1] = {}
 
-    -- separator MUST be one character
-    if #separator ~= 1 and type("separator") ~= "string" then error("the separator must be of string type and exactly one character") end
-    local separator = string.byte(separator)
+    -- delimiter MUST be one character
+    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
+    local delimiter = string.byte(delimiter)
 
     -- OPTIONS yo
     local header = true
     local rename = {}
     local fieldsToKeep = nil
     local ofieldsToKeep = nil
+    local loadFromString = false
     if options then
         if options.headers ~= nil then
-            if type(options.headers) ~= "boolean" then
-                error("ftcsv only takes the boolean 'true' or 'false' for the optional parameter 'headers' (default 'true'). You passed in '" .. options.headers .. "' of type '" .. type(options.headers) .. "'.")
-            end
+            assert(type(options.headers) == "boolean", "ftcsv only takes the boolean 'true' or 'false' for the optional parameter 'headers' (default 'true'). You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
             header = options.headers
         end
         if options.rename ~= nil then
-            if type(options.rename) ~= "table" then
-                error("ftcsv only takes in a key-value table for the optional parameter 'rename'. You passed in '" .. options.rename .. "' of type '" .. type(options.rename) .. "'.")
-            end
+            assert(type(options.rename) == "table", "ftcsv only takes in a key-value table for the optional parameter 'rename'. You passed in '" .. tostring(options.rename) .. "' of type '" .. type(options.rename) .. "'.")
             rename = options.rename
         end
         if options.fieldsToKeep ~= nil then
+            assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.fieldsToKeep) .. "' of type '" .. type(options.fieldsToKeep) .. "'.")
             ofieldsToKeep = options.fieldsToKeep
-            if type(options.fieldsToKeep) ~= "table" then
-                error("ftcsv only takes in a list (as a table for the optional parameter 'fieldsToKeep'. You passed in '" .. options.fieldsToKeep .. "' of type '" .. type(options.fieldsToKeep) .. "'.")
-            end
         end
+        if options.loadFromString ~= nil then
+            assert(type(options.loadFromString) == "boolean", "ftcsv only takes a boolean value for optional parameter 'loadFromString'. You passed in '" .. tostring(options.loadFromString) .. "' of type '" .. type(options.loadFromString) .. "'.")
+            loadFromString = options.loadFromString
+        end
+    end
+
+    local inputString
+    if loadFromString then
+        inputString = inputFile
+    else
+        inputString = loadFile(inputFile)
     end
 
     local CR = string.byte("\r")
@@ -138,7 +174,7 @@ function ftcsv.decode(inputString, separator, options)
             -- end
 
             -- create some fields if we can!
-            elseif currentChar == separator then
+            elseif currentChar == delimiter then
                 -- for that first field
                 if not headerSet and lineNum == 1 then
                     headerField[fieldNum] = fieldNum
@@ -196,75 +232,114 @@ function ftcsv.decode(inputString, separator, options)
 
     -- clean up last line if it's weird (this happens when there is a CRLF newline at end of file)
     -- doing a count gets it to pick up the oddballs
-    local count = 0
-    for _, _ in pairs(outResults[lineNum]) do
-        count = count + 1
+    local finalLineCount = 0
+    for _, value in pairs(outResults[lineNum]) do
+        finalLineCount = finalLineCount + 1
     end
-    if count ~= #headerField then
+    local initialLineCount = 0
+    for _, value in pairs(outResults[1]) do
+        initialLineCount = initialLineCount + 1
+    end
+    -- print("Final/Initial", finalLineCount, initialLineCount)
+    if finalLineCount ~= initialLineCount then
         outResults[lineNum] = nil
     end
 
     return outResults
 end
 
+-- a function that delimits " to "", used by the writer
 local function delimitField(field)
     if field:find('"') then
-        return '"' .. field:gsub('"', '""') .. '"'
-    elseif field:find(" ") or field:find(",") or field:find("\n") then
-        return '"' .. field .. '"'
-    elseif field == "" then
-        return '""'
+        return field:gsub('"', '""')
     else
         return field
     end
 end
 
-function ftcsv.encode(inputTable, separator, headers)
-    -- separator MUST be one character
-    if #separator ~= 1 and type("separator") ~= "string" then error("the separator must be of string type and exactly one character") end
+-- a function that compiles some lua code to quickly print out the csv
+local function writer(inputTable, dilimeter, headers)
+    -- they get re-created here if they need to be escaped so lua understands it based on how
+    -- they came in
+    local headers = headers
+    for i = 1, #headers do
+        if inputTable[1][headers[i]] == nil then
+            error("the field '" .. headers[i] .. "' doesn't exist in the table")
+        end
+        if headers[i]:find('"') then
+            headers[i] = headers[i]:gsub('"', '\\"')
+        end
+    end
 
-    -- keep track of me output
+    local outputFunc = [[
+        local state, i = ...
+        local d = state.delimitField
+        i = i + 1;
+        if i > state.tableSize then return nil end;
+        return i, '"' .. d(state.t[i]["]] .. table.concat(headers, [["]) .. '"]] .. dilimeter .. [["' .. d(state.t[i]["]]) .. [["]) .. '"\r\n']]
+
+    -- print(outputFunc)
+
+    local state = {}
+    state.t = inputTable
+    state.tableSize = #inputTable
+    state.delimitField = delimitField
+
+    return load(outputFunc), state, 0
+
+end
+
+-- takes the values from the headers in the first row of the input table
+local function extractHeaders(inputTable)
+    headers = {}
+    for key, _ in pairs(inputTable[1]) do
+        headers[#headers+1] = key
+    end
+
+    -- lets make the headers alphabetical
+    table.sort(headers)
+
+    return headers
+end
+
+-- turns a lua table into a csv
+-- works really quickly with luajit-2.1, because table.concat life
+function ftcsv.encode(inputTable, delimiter, options)
     local output = {}
 
-    -- grab the headers from the first file if they are not provided
-    -- we'll do this easily and not so quickly...
-    local headers = headers
+    -- dilimeter MUST be one character
+    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
+    local delimiter = delimiter
+
+    -- grab the headers from the options if they are there
+    local headers = nil
+    if options then
+        if options.headers ~= nil then
+            assert(type(options.headers) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'headers'. You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
+            headers = options.headers
+        end
+    end
     if headers == nil then
-        headers = {}
-        for key, _ in pairs(inputTable[1]) do
-            headers[#headers+1] = key
-        end
-
-        -- lets make the headers alphabetical
-        table.sort(headers)
+        headers = extractHeaders(inputTable)
     end
 
-    -- this is for outputting the headers
-    local line = {}
-    for i, header in ipairs(headers) do
-        line[i] = delimitField(header)
-    end
-    line.length = #line
-
-    -- string the header together yo
-    output[1] = table.concat(line, separator)
-
-    -- cheap and fast (because buffers)
-    for i, fields in ipairs(inputTable) do
-        local numHeaders = 0
-        for j = 1, #headers do
-            local field = fields[headers[j]]
-            line[j] = delimitField(field)
-            numHeaders = j
+    -- newHeaders are needed if there are quotes within the header
+    -- because they need to be escaped
+    local newHeaders = {}
+    for i = 1, #headers do
+        if headers[i]:find('"') then
+            newHeaders[i] = headers[i]:gsub('"', '""')
+        else
+            newHeaders[i] = headers[i]
         end
-        -- all lines should have the same number of fields
-        if line.length ~= numHeaders then
-            error("All lines should have the same length. The line at row " .. i .. " is of length " .. numHeaders .. " instead of " .. line.length)
-        end
-        output[i+1] = table.concat(line, separator)
     end
+    output[1] = '"' .. table.concat(newHeaders, '","') .. '"\r\n'
 
-    return table.concat(output, "\r\n")
+    -- add each line by line.
+    for i, line in writer(inputTable, delimiter, headers) do
+        output[i+1] = line
+    end
+    return table.concat(output)
 end
 
 return ftcsv

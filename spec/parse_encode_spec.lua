@@ -1,7 +1,5 @@
 local cjson = require("cjson")
 local ftcsv = require('ftcsv')
--- local csv = require('csv')
--- local staecsv = require('state-csv')
 
 local function loadFile(textFile)
     local file = io.open(textFile, "r")
@@ -19,6 +17,7 @@ local files = {
 	"empty_no_quotes",
 	"empty_crlf",
 	"escaped_quotes",
+	"escaped_quotes_in_header",
 	"json",
 	"json_no_newline",
 	"newlines",
@@ -32,30 +31,33 @@ local files = {
 describe("csv decode", function()
 	for _, value in ipairs(files) do
 		it("should handle " .. value, function()
-			local contents = loadFile("spec/csvs/" .. value .. ".csv")
 			local json = loadFile("spec/json/" .. value .. ".json")
 			json = cjson.decode(json)
-			-- local parse = staecsv:ftcsv(contents, ",")
-			local parse = ftcsv.decode(contents, ",")
-			-- local f = csv.openstring(contents, {separator=",", header=true})
-			-- local parse = {}
-			-- for fields in f:lines() do
-			  -- parse[#parse+1] = fields
-			-- end
+			local parse = ftcsv.parse("spec/csvs/" .. value .. ".csv", ",")
 			assert.are.same(json, parse)
 		end)
 	end
 end)
 
+describe("csv decode from string", function()
+	for _, value in ipairs(files) do
+		it("should handle " .. value, function()
+			local contents = loadFile("spec/csvs/" .. value .. ".csv")
+			local json = loadFile("spec/json/" .. value .. ".json")
+			json = cjson.decode(json)
+			local parse = ftcsv.parse(contents, ",", {loadFromString=true})
+			assert.are.same(json, parse)
+		end)
+	end
+end)
 
 describe("csv encode", function()
 	for _, value in ipairs(files) do
 		it("should handle " .. value, function()
-			local originalFile = loadFile("spec/csvs/" .. value .. ".csv")
 			local jsonFile = loadFile("spec/json/" .. value .. ".json")
 			local jsonDecode = cjson.decode(jsonFile)
 			-- local parse = staecsv:ftcsv(contents, ",")
-			local reEncoded = ftcsv.decode(ftcsv.encode(jsonDecode, ","), ",")
+			local reEncoded = ftcsv.parse(ftcsv.encode(jsonDecode, ","), ",", {loadFromString=true})
 			-- local f = csv.openstring(contents, {separator=",", header=true})
 			-- local parse = {}
 			-- for fields in f:lines() do
