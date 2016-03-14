@@ -102,8 +102,55 @@ describe("csv features", function()
 		expected[2][1] = "diamond"
 		expected[2][2] = "emerald"
 		expected[2][3] = "pearl"
-		local options = {loadFromString=true, header=false}
+		local options = {loadFromString=true, headers=false}
 		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should error out for fieldsToKeep if no headers and no renaming", function()
+		local options = {loadFromString=true, headers=false, fieldsToKeep={1, 2}}
+		assert.has.errors(function() ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options) end)
+	end)
+
+	it("should handle only renaming fields from files without headers", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		expected[2] = {}
+		expected[2].a = "diamond"
+		expected[2].b = "emerald"
+		expected[2].c = "pearl"
+		local options = {loadFromString=true, headers=false, rename={"a","b","c"}}
+		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle only renaming fields from files without headers and only keeping a few fields", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = "banana"
+		expected[2] = {}
+		expected[2].a = "diamond"
+		expected[2].b = "emerald"
+		local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}}
+		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle if the number of renames doesn't equal the number of fields", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = "banana"
+		expected[2] = {}
+		expected[2].a = "diamond"
+		expected[2].b = "emerald"
+		local options = {loadFromString=true, headers=false, rename={"a","b"}, fieldsToKeep={"a","b"}}
+		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		assert.are.same(expected, actual)
 	end)
 
 end)

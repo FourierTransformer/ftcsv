@@ -49,7 +49,8 @@ local function createNewField(inputString, quote, fieldStart, i, line, fieldNum,
     -- so, if we just recently de-escaped, we don't want the trailing \"
     -- if fieldsToKeep == nil then
     -- local fieldsToKeep = fieldsToKeep
-    local output = line[fieldNum]
+    -- print(fieldNum)
+    -- print(fieldsToKeep[fieldNum])
     if fieldsToKeep == nil or fieldsToKeep[fieldNum] then
         -- print(fieldsToKeep)
         -- print("b4", i, fieldNum, line[fieldNum])
@@ -71,7 +72,7 @@ local function createNewField(inputString, quote, fieldStart, i, line, fieldNum,
 end
 
 -- creates the headers after reading through to the first line
-local function createHeaders(line, rename, fieldsToKeep)
+local function createHeaders(line, rename)
     -- print("CREATING HEADERS")
     local headers = {}
     for i = 1, #line do
@@ -82,12 +83,7 @@ local function createHeaders(line, rename, fieldsToKeep)
             headers[i] = line[i]
         end
     end
-    if fieldsToKeep ~= nil then
-        for i = 1, #fieldsToKeep do
-            fieldsToKeep[fieldsToKeep[i]] = true
-        end
-    end
-    return headers, 0, true, fieldsToKeep
+    return headers, 0, true
 end
 
 -- main function used to parse
@@ -118,6 +114,9 @@ function ftcsv.parse(inputFile, delimiter, options)
         if options.fieldsToKeep ~= nil then
             assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.fieldsToKeep) .. "' of type '" .. type(options.fieldsToKeep) .. "'.")
             ofieldsToKeep = options.fieldsToKeep
+            if header == false then
+                assert(next(rename) ~= nil, "ftcsv can only have fieldsToKeep for header-less files when they have been renamed. Please add the 'rename' option and try again.")
+            end
         end
         if options.loadFromString ~= nil then
             assert(type(options.loadFromString) == "boolean", "ftcsv only takes a boolean value for optional parameter 'loadFromString'. You passed in '" .. tostring(options.loadFromString) .. "' of type '" .. type(options.loadFromString) .. "'.")
@@ -199,10 +198,32 @@ function ftcsv.parse(inputFile, delimiter, options)
                 doubleQuoteEscape = createNewField(inputString, quote, fieldStart, i, outResults[lineNum], headerField[fieldNum], doubleQuoteEscape, fieldsToKeep)
 
                 -- if we have headers then we gotta do something about it
-                if header and lineNum == 1 and not headerSet then
-                    headerField, lineNum, headerSet, fieldsToKeep = createHeaders(outResults[lineNum], rename, ofieldsToKeep)
+                if lineNum == 1 and not headerSet then
+                    if ofieldsToKeep ~= nil then
+                        fieldsToKeep = {}
+                        for i = 1, #ofieldsToKeep do
+                            fieldsToKeep[ofieldsToKeep[i]] = true
+                        end
+                    end
+                    if header then
+                        headerField, lineNum, headerSet = createHeaders(outResults[lineNum], rename)
+                    else
+                        -- files without headers, but with a rename need to be handled too!
+                        if #rename > 0 then
+                            for j = 1, math.max(#rename, #headerField) do
+                                headerField[j] = rename[j]
+                                -- this is an odd case of where there are certain fields to be kept
+                                if fieldsToKeep == nil or fieldsToKeep[rename[j]] then
+                                    outResults[1][rename[j]] = outResults[1][j]
+                                end
+                                -- print("J", j)
+                                outResults[1][j] = nil
+                            end
+                        end
+                    end
                 end
 
+                -- incrememnt for new line
                 lineNum = lineNum + 1
                 outResults[lineNum] = {}
                 fieldNum = 1
@@ -314,9 +335,9 @@ function ftcsv.encode(inputTable, delimiter, options)
     -- grab the headers from the options if they are there
     local headers = nil
     if options then
-        if options.headers ~= nil then
-            assert(type(options.headers) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'headers'. You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
-            headers = options.headers
+        if options.fieldsToKeep ~= nil then
+            assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
+            headers = options.fieldsToKeep
         end
     end
     if headers == nil then
