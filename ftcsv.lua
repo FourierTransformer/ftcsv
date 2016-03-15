@@ -1,17 +1,39 @@
----------------
--- ## ftcsv, a fairly fast csv library written in pure lua
---
--- It works well for CSVs that can easily be fully loaded into memory (easily
--- up to a hundred MBs). Currently, there isn't a "large" file mode with
--- proper readers and writers for ingesting CSVs in bulk with a fixed amount
--- of memory
---
--- @author Shakil Thakur
--- @copyright 2016
--- @license MIT
----------------
+local ftcsv = {
+    _VERSION = 'ftcsv 1.0.1',
+    _DESCRIPTION = 'CSV library for Lua',
+    _URL         = 'https://github.com/FourierTransformer/ftcsv',
+    _LICENSE     = [[
+        The MIT License (MIT)
 
-local ftcsv = {}
+        Copyright (c) 2016 Shakil Thakur
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+    ]]
+}
+
+-- lua 5.1 compat
+local M = {}
+if type(jit) == 'table' or _ENV then
+    M.load = _G.load
+else
+    M.load = loadstring
+end
 
 -- load an entire file into memory
 local function loadFile(textFile)
@@ -24,7 +46,7 @@ end
 
 -- finds the end of an escape sequence
 local function findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
-    local doubleQuoteEscape = doubleQuoteEscape
+    -- local doubleQuoteEscape = doubleQuoteEscape
     while i <= inputLength do
         -- print(i)
         local currentChar = string.byte(inputString, i)
@@ -94,7 +116,7 @@ function ftcsv.parse(inputFile, delimiter, options)
 
     -- delimiter MUST be one character
     assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
-    local delimiter = string.byte(delimiter)
+    local delimiterByte = string.byte(delimiter)
 
     -- OPTIONS yo
     local header = true
@@ -173,7 +195,7 @@ function ftcsv.parse(inputFile, delimiter, options)
             -- end
 
             -- create some fields if we can!
-            elseif currentChar == delimiter then
+            elseif currentChar == delimiterByte then
                 -- for that first field
                 if not headerSet and lineNum == 1 then
                     headerField[fieldNum] = fieldNum
@@ -201,8 +223,8 @@ function ftcsv.parse(inputFile, delimiter, options)
                 if lineNum == 1 and not headerSet then
                     if ofieldsToKeep ~= nil then
                         fieldsToKeep = {}
-                        for i = 1, #ofieldsToKeep do
-                            fieldsToKeep[ofieldsToKeep[i]] = true
+                        for j = 1, #ofieldsToKeep do
+                            fieldsToKeep[ofieldsToKeep[j]] = true
                         end
                     end
                     if header then
@@ -254,11 +276,11 @@ function ftcsv.parse(inputFile, delimiter, options)
     -- clean up last line if it's weird (this happens when there is a CRLF newline at end of file)
     -- doing a count gets it to pick up the oddballs
     local finalLineCount = 0
-    for _, value in pairs(outResults[lineNum]) do
+    for _, _ in pairs(outResults[lineNum]) do
         finalLineCount = finalLineCount + 1
     end
     local initialLineCount = 0
-    for _, value in pairs(outResults[1]) do
+    for _, _ in pairs(outResults[1]) do
         initialLineCount = initialLineCount + 1
     end
     -- print("Final/Initial", finalLineCount, initialLineCount)
@@ -282,7 +304,6 @@ end
 local function writer(inputTable, dilimeter, headers)
     -- they get re-created here if they need to be escaped so lua understands it based on how
     -- they came in
-    local headers = headers
     for i = 1, #headers do
         if inputTable[1][headers[i]] == nil then
             error("the field '" .. headers[i] .. "' doesn't exist in the table")
@@ -306,13 +327,13 @@ local function writer(inputTable, dilimeter, headers)
     state.tableSize = #inputTable
     state.delimitField = delimitField
 
-    return load(outputFunc), state, 0
+    return M.load(outputFunc), state, 0
 
 end
 
 -- takes the values from the headers in the first row of the input table
 local function extractHeaders(inputTable)
-    headers = {}
+    local headers = {}
     for key, _ in pairs(inputTable[1]) do
         headers[#headers+1] = key
     end
@@ -330,7 +351,6 @@ function ftcsv.encode(inputTable, delimiter, options)
 
     -- dilimeter MUST be one character
     assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
-    local delimiter = delimiter
 
     -- grab the headers from the options if they are there
     local headers = nil
@@ -364,3 +384,4 @@ function ftcsv.encode(inputTable, delimiter, options)
 end
 
 return ftcsv
+
