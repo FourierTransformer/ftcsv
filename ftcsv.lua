@@ -47,20 +47,24 @@ end
 -- finds the end of an escape sequence
 local function findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
     -- local doubleQuoteEscape = doubleQuoteEscape
+    local currentChar, nextChar = string.byte(inputString, i), nil
     while i <= inputLength do
         -- print(i)
-        local currentChar = string.byte(inputString, i)
-        local nextChar = string.byte(inputString, i+1)
+        nextChar = string.byte(inputString, i+1)
+
         -- this one deals with " double quotes that are escaped "" within single quotes "
         -- these should be turned into a single quote at the end of the field
         if currentChar == quote and nextChar == quote then
             doubleQuoteEscape = true
             i = i + 2
+            currentChar = string.byte(inputString, i)
+
         -- identifies the escape toggle
         elseif currentChar == quote and nextChar ~= quote then
             return i-1, doubleQuoteEscape
         else
             i = i + 1
+            currentChar = nextChar
         end
     end
 end
@@ -167,7 +171,7 @@ function ftcsv.parse(inputFile, delimiter, options)
     local i = 1
 
     -- keep track of my chars!
-    local currentChar, nextChar = string.byte(inputString, i), string.byte(inputString, i+1)
+    local currentChar, nextChar = string.byte(inputString, i), nil
 
     while i <= inputLength do
         -- go by two chars at a time!
