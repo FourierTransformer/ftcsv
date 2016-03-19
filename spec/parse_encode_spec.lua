@@ -34,6 +34,7 @@ describe("csv decode", function()
 			local json = loadFile("spec/json/" .. value .. ".json")
 			json = cjson.decode(json)
 			local parse = ftcsv.parse("spec/csvs/" .. value .. ".csv", ",")
+			assert.are.same(#json, #parse)
 			assert.are.same(json, parse)
 		end)
 	end

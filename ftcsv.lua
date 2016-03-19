@@ -27,12 +27,67 @@ local ftcsv = {
     ]]
 }
 
--- lua 5.1 compat
+-- lua 5.1 load compat
 local M = {}
 if type(jit) == 'table' or _ENV then
     M.load = _G.load
 else
     M.load = loadstring
+end
+
+-- luajit specific speedups
+-- luajit performs faster with iterating over string.byte,
+-- whereas vanilla lua performs faster with string.find
+if type(jit) == 'table' then
+    -- finds the end of an escape sequence
+    function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
+        -- local doubleQuoteEscape = doubleQuoteEscape
+        local currentChar, nextChar = string.byte(inputString, i), nil
+        while i <= inputLength do
+            -- print(i)
+            nextChar = string.byte(inputString, i+1)
+
+            -- this one deals with " double quotes that are escaped "" within single quotes "
+            -- these should be turned into a single quote at the end of the field
+            if currentChar == quote and nextChar == quote then
+                doubleQuoteEscape = true
+                i = i + 2
+                currentChar = string.byte(inputString, i)
+
+            -- identifies the escape toggle
+            elseif currentChar == quote and nextChar ~= quote then
+                -- print("exiting", i-1)
+                return i-1, doubleQuoteEscape
+            else
+                i = i + 1
+                currentChar = nextChar
+            end
+        end
+    end
+
+else
+    -- vanilla lua closing quote finder
+    function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
+        local firstCharIndex = 1
+        local firstChar, iChar = nil, nil
+        repeat
+            firstCharIndex, i = inputString:find('".?', i+1)
+            firstChar = string.byte(inputString, firstCharIndex)
+            iChar = string.byte(inputString, i)
+            -- nextChar = string.byte(inputString, i+1)
+            -- print("HI", offset, i)
+            -- print(firstChar, iChar)
+            if firstChar == quote and iChar == quote then
+                doubleQuoteEscape = true
+            end
+        until iChar ~= quote
+        if i == nil then
+            return inputLength-1, doubleQuoteEscape
+        end
+        -- print("exiting", i-2)
+        return i-2, doubleQuoteEscape
+    end
+
 end
 
 -- load an entire file into memory
@@ -42,31 +97,6 @@ local function loadFile(textFile)
     local allLines = file:read("*all")
     file:close()
     return allLines
-end
-
--- finds the end of an escape sequence
-local function findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
-    -- local doubleQuoteEscape = doubleQuoteEscape
-    local currentChar, nextChar = string.byte(inputString, i), nil
-    while i <= inputLength do
-        -- print(i)
-        nextChar = string.byte(inputString, i+1)
-
-        -- this one deals with " double quotes that are escaped "" within single quotes "
-        -- these should be turned into a single quote at the end of the field
-        if currentChar == quote and nextChar == quote then
-            doubleQuoteEscape = true
-            i = i + 2
-            currentChar = string.byte(inputString, i)
-
-        -- identifies the escape toggle
-        elseif currentChar == quote and nextChar ~= quote then
-            return i-1, doubleQuoteEscape
-        else
-            i = i + 1
-            currentChar = nextChar
-        end
-    end
 end
 
 -- creates a new field and adds it to the main table
@@ -193,7 +223,7 @@ function ftcsv.parse(inputFile, delimiter, options)
             elseif currentChar == quote and nextChar ~= quote then
                 -- print("ESCAPE TOGGLE")
                 fieldStart = i + 1
-                i, doubleQuoteEscape = findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
+                i, doubleQuoteEscape = M.findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
                 -- print("I VALUE", i, doubleQuoteEscape)
                 skipChar = 1
             -- end
