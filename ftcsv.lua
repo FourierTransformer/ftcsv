@@ -1,5 +1,5 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.0.1',
+    _VERSION = 'ftcsv 1.0.2',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
@@ -204,94 +204,90 @@ function ftcsv.parse(inputFile, delimiter, options)
     local currentChar, nextChar = string.byte(inputString, i), nil
 
     while i <= inputLength do
-        -- go by two chars at a time!
+        -- go by two chars at a time! currentChar is set at the bottom.
         -- currentChar = string.byte(inputString, i)
         nextChar = string.byte(inputString, i+1)
         -- print(i, string.char(currentChar), string.char(nextChar))
 
-        -- keeps track of characters to "skip" while going through the encoding process
-        -- if skipChar == 0 then
+        -- empty string
+        if currentChar == quote and nextChar == quote then
+            -- print("EMPTY STRING")
+            skipChar = 1
+            fieldStart = i + 2
+            -- print("fs+2:", fieldStart)
 
-            -- empty string
-            if currentChar == quote and nextChar == quote then
-                -- print("EMPTY STRING")
-                skipChar = 1
-                fieldStart = i + 2
-                -- print("fs+2:", fieldStart)
+        -- identifies the escape toggle
+        elseif currentChar == quote and nextChar ~= quote then
+            -- print("ESCAPE TOGGLE")
+            fieldStart = i + 1
+            i, doubleQuoteEscape = M.findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
+            -- print("I VALUE", i, doubleQuoteEscape)
+            skipChar = 1
 
-            -- identifies the escape toggle
-            elseif currentChar == quote and nextChar ~= quote then
-                -- print("ESCAPE TOGGLE")
-                fieldStart = i + 1
-                i, doubleQuoteEscape = M.findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
-                -- print("I VALUE", i, doubleQuoteEscape)
-                skipChar = 1
-            -- end
+        -- create some fields if we can!
+        elseif currentChar == delimiterByte then
+            -- for that first field
+            if not headerSet and lineNum == 1 then
+                headerField[fieldNum] = fieldNum
+            end
+            -- create the new field
+            -- print(headerField[fieldNum])
+            doubleQuoteEscape = createNewField(inputString, quote, fieldStart, i, outResults[lineNum], headerField[fieldNum], doubleQuoteEscape, fieldsToKeep)
 
-            -- create some fields if we can!
-            elseif currentChar == delimiterByte then
-                -- for that first field
-                if not headerSet and lineNum == 1 then
-                    headerField[fieldNum] = fieldNum
-                end
-                -- create the new field
-                -- print(headerField[fieldNum])
-                doubleQuoteEscape = createNewField(inputString, quote, fieldStart, i, outResults[lineNum], headerField[fieldNum], doubleQuoteEscape, fieldsToKeep)
+            fieldNum = fieldNum + 1
+            fieldStart = i + 1
+            -- print("fs+1:", fieldStart)
+        -- end
 
-                fieldNum = fieldNum + 1
-                fieldStart = i + 1
-                -- print("fs+1:", fieldStart)
-            -- end
+        -- newline?!
+        elseif ((currentChar == CR and nextChar == LF) or currentChar == LF) then
+            -- keep track of headers
+            if not headerSet and lineNum == 1 then
+                headerField[fieldNum] = fieldNum
+            end
 
-            -- newline?!
-            elseif ((currentChar == CR and nextChar == LF) or currentChar == LF) then
-                -- keep track of headers
-                if not headerSet and lineNum == 1 then
-                    headerField[fieldNum] = fieldNum
-                end
+            -- create the new field
+            doubleQuoteEscape = createNewField(inputString, quote, fieldStart, i, outResults[lineNum], headerField[fieldNum], doubleQuoteEscape, fieldsToKeep)
 
-                -- create the new field
-                doubleQuoteEscape = createNewField(inputString, quote, fieldStart, i, outResults[lineNum], headerField[fieldNum], doubleQuoteEscape, fieldsToKeep)
-
-                -- if we have headers then we gotta do something about it
-                if lineNum == 1 and not headerSet then
-                    if ofieldsToKeep ~= nil then
-                        fieldsToKeep = {}
-                        for j = 1, #ofieldsToKeep do
-                            fieldsToKeep[ofieldsToKeep[j]] = true
-                        end
+            -- if we have headers then we gotta do something about it
+            if lineNum == 1 and not headerSet then
+                if ofieldsToKeep ~= nil then
+                    fieldsToKeep = {}
+                    for j = 1, #ofieldsToKeep do
+                        fieldsToKeep[ofieldsToKeep[j]] = true
                     end
-                    if header then
-                        headerField, lineNum, headerSet = createHeaders(outResults[lineNum], rename)
-                    else
-                        -- files without headers, but with a rename need to be handled too!
-                        if #rename > 0 then
-                            for j = 1, math.max(#rename, #headerField) do
-                                headerField[j] = rename[j]
-                                -- this is an odd case of where there are certain fields to be kept
-                                if fieldsToKeep == nil or fieldsToKeep[rename[j]] then
-                                    outResults[1][rename[j]] = outResults[1][j]
-                                end
-                                -- print("J", j)
-                                outResults[1][j] = nil
+                end
+                if header then
+                    headerField, lineNum, headerSet = createHeaders(outResults[lineNum], rename)
+                else
+                    -- files without headers, but with a rename need to be handled too!
+                    if #rename > 0 then
+                        for j = 1, math.max(#rename, #headerField) do
+                            headerField[j] = rename[j]
+                            -- this is an odd case of where there are certain fields to be kept
+                            if fieldsToKeep == nil or fieldsToKeep[rename[j]] then
+                                outResults[1][rename[j]] = outResults[1][j]
                             end
+                            -- print("J", j)
+                            outResults[1][j] = nil
                         end
                     end
-                end
-
-                -- incrememnt for new line
-                lineNum = lineNum + 1
-                outResults[lineNum] = {}
-                fieldNum = 1
-                fieldStart = i + 1
-                -- print("fs:", fieldStart)
-                if (currentChar == CR and nextChar == LF) then
-                    -- print("CRLF DETECTED")
-                    skipChar = 1
-                    fieldStart = fieldStart + 1
-                    -- print("fs:", fieldStart)
                 end
             end
+
+            -- incrememnt for new line
+            lineNum = lineNum + 1
+            outResults[lineNum] = {}
+            fieldNum = 1
+            fieldStart = i + 1
+            -- print("fs:", fieldStart)
+            if (currentChar == CR and nextChar == LF) then
+                -- print("CRLF DETECTED")
+                skipChar = 1
+                fieldStart = fieldStart + 1
+                -- print("fs:", fieldStart)
+            end
+        end
 
         i = i + 1 + skipChar
         if (skipChar > 0) then
