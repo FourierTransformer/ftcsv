@@ -323,6 +323,7 @@ end
 
 -- a function that delimits " to "", used by the writer
 local function delimitField(field)
+    local field = tostring(field)
     if field:find('"') then
         return field:gsub('"', '""')
     else
