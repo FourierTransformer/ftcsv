@@ -35,6 +35,10 @@ else
     M.load = loadstring
 end
 
+-- perf
+local sbyte = string.byte
+local ssub = string.sub
+
 -- luajit specific speedups
 -- luajit performs faster with iterating over string.byte,
 -- whereas vanilla lua performs faster with string.find
@@ -42,17 +46,17 @@ if type(jit) == 'table' then
     -- finds the end of an escape sequence
     function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
         -- local doubleQuoteEscape = doubleQuoteEscape
-        local currentChar, nextChar = string.byte(inputString, i), nil
+        local currentChar, nextChar = sbyte(inputString, i), nil
         while i <= inputLength do
             -- print(i)
-            nextChar = string.byte(inputString, i+1)
+            nextChar = sbyte(inputString, i+1)
 
             -- this one deals with " double quotes that are escaped "" within single quotes "
             -- these should be turned into a single quote at the end of the field
             if currentChar == quote and nextChar == quote then
                 doubleQuoteEscape = true
                 i = i + 2
-                currentChar = string.byte(inputString, i)
+                currentChar = sbyte(inputString, i)
 
             -- identifies the escape toggle
             elseif currentChar == quote and nextChar ~= quote then
@@ -72,8 +76,8 @@ else
         local firstChar, iChar = nil, nil
         repeat
             firstCharIndex, i = inputString:find('".?', i+1)
-            firstChar = string.byte(inputString, firstCharIndex)
-            iChar = string.byte(inputString, i)
+            firstChar = sbyte(inputString, firstCharIndex)
+            iChar = sbyte(inputString, i)
             -- nextChar = string.byte(inputString, i+1)
             -- print("HI", offset, i)
             -- print(firstChar, iChar)
@@ -110,11 +114,11 @@ local function createNewField(inputString, quote, fieldStart, i, line, fieldNum,
     if fieldsToKeep == nil or fieldsToKeep[fieldNum] then
         -- print(fieldsToKeep)
         -- print("b4", i, fieldNum, line[fieldNum])
-        if string.byte(inputString, i-1) == quote then
+        if sbyte(inputString, i-1) == quote then
             -- print("Skipping last \"")
-            line[fieldNum] = string.sub(inputString, fieldStart, i-2)
+            line[fieldNum] = ssub(inputString, fieldStart, i-2)
         else
-            line[fieldNum] = string.sub(inputString, fieldStart, i-1)
+            line[fieldNum] = ssub(inputString, fieldStart, i-1)
         end
         -- print("aft", i, fieldNum, line[fieldNum])
         -- remove the double quotes (if they existed)
@@ -150,7 +154,7 @@ function ftcsv.parse(inputFile, delimiter, options)
 
     -- delimiter MUST be one character
     assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
-    local delimiterByte = string.byte(delimiter)
+    local delimiterByte = sbyte(delimiter)
 
     -- OPTIONS yo
     local header = true
@@ -187,9 +191,9 @@ function ftcsv.parse(inputFile, delimiter, options)
         inputString = loadFile(inputFile)
     end
 
-    local CR = string.byte("\r")
-    local LF = string.byte("\n")
-    local quote = string.byte("\"")
+    local CR = sbyte("\r")
+    local LF = sbyte("\n")
+    local quote = sbyte("\"")
     local doubleQuoteEscape = false
     local fieldStart = 1
     local fieldNum = 1
@@ -201,12 +205,12 @@ function ftcsv.parse(inputFile, delimiter, options)
     local i = 1
 
     -- keep track of my chars!
-    local currentChar, nextChar = string.byte(inputString, i), nil
+    local currentChar, nextChar = sbyte(inputString, i), nil
 
     while i <= inputLength do
         -- go by two chars at a time! currentChar is set at the bottom.
         -- currentChar = string.byte(inputString, i)
-        nextChar = string.byte(inputString, i+1)
+        nextChar = sbyte(inputString, i+1)
         -- print(i, string.char(currentChar), string.char(nextChar))
 
         -- empty string
@@ -291,7 +295,7 @@ function ftcsv.parse(inputFile, delimiter, options)
 
         i = i + 1 + skipChar
         if (skipChar > 0) then
-            currentChar = string.byte(inputString, i)
+            currentChar = sbyte(inputString, i)
         else
             currentChar = nextChar
         end
