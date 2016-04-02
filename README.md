@@ -60,6 +60,16 @@ ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
 	local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", ",", options)
  	```
 
+ - `headerFunc`
+
+ 	Applies a function to every field in the header. If you are using `rename`, the function is applied after the rename.
+
+ 	Ex: making all fields uppercase
+ 	```lua
+ 	local options = {loadFromString=true, headerFunc=string.upper}
+	local actual = ftcsv.parse("a,b,c\napple,banana,carrot", ",", options)
+ 	```
+
  - `headers`
 
  	Set `headers` to `false` if the file you are reading doesn't have any headers. This will cause ftcsv to create indexed tables rather than a key-value tables for the output.

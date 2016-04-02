@@ -153,4 +153,14 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should make things uppercase via headerFunc", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].A = "apple"
+		expected[1].B = "banana"
+		expected[1].C = "carrot"
+		local actual = ftcsv.parse("a,b,c\napple,banana,carrot", ",", {loadFromString=true, headerFunc=string.upper})
+		assert.are.same(expected, actual)
+	end)
+
 end)

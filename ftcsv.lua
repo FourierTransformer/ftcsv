@@ -1,5 +1,5 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.0.3',
+    _VERSION = 'ftcsv 1.1.0',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
@@ -104,108 +104,61 @@ local function loadFile(textFile)
 end
 
 -- creates a new field and adds it to the main table
-local function createNewField(inputString, quote, fieldStart, i, line, fieldNum, doubleQuoteEscape, fieldsToKeep)
-    -- print(lineNum, fieldNum, fieldStart, i-1)
+local function createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
+    local field
     -- so, if we just recently de-escaped, we don't want the trailing \"
-    -- if fieldsToKeep == nil then
-    -- local fieldsToKeep = fieldsToKeep
-    -- print(fieldNum)
-    -- print(fieldsToKeep[fieldNum])
-    if fieldsToKeep == nil or fieldsToKeep[fieldNum] then
-        -- print(fieldsToKeep)
-        -- print("b4", i, fieldNum, line[fieldNum])
-        if sbyte(inputString, i-1) == quote then
-            -- print("Skipping last \"")
-            line[fieldNum] = ssub(inputString, fieldStart, i-2)
-        else
-            line[fieldNum] = ssub(inputString, fieldStart, i-1)
-        end
-        -- print("aft", i, fieldNum, line[fieldNum])
-        -- remove the double quotes (if they existed)
-        if doubleQuoteEscape then
-            -- print("QUOTE REPLACE")
-            -- print(line[fieldNum])
-            line[fieldNum] = line[fieldNum]:gsub('""', '"')
-            return false
-        end
+    if sbyte(inputString, i-1) == quote then
+        -- print("Skipping last \"")
+        field = ssub(inputString, fieldStart, i-2)
+    else
+        field = ssub(inputString, fieldStart, i-1)
     end
-end
-
--- creates the headers after reading through to the first line
-local function createHeaders(line, rename)
-    -- print("CREATING HEADERS")
-    local headers = {}
-    for i = 1, #line do
-        if rename[line[i]] then
-            -- print("RENAMING", line[i], rename[line[i]])
-            headers[i] = rename[line[i]]
-        else
-            headers[i] = line[i]
-        end
+    if doubleQuoteEscape then
+        -- print("QUOTE REPLACE")
+        -- print(line[fieldNum])
+        field = field:gsub('""', '"')
     end
-    return headers, 0, true
+    return field
 end
 
 -- main function used to parse
-function ftcsv.parse(inputFile, delimiter, options)
-    -- each line in outResults holds another table
-    local outResults = {}
-    outResults[1] = {}
-
-    -- delimiter MUST be one character
-    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
-    local delimiterByte = sbyte(delimiter)
-
-    -- OPTIONS yo
-    local header = true
-    local rename = {}
-    local fieldsToKeep = nil
-    local ofieldsToKeep = nil
-    local loadFromString = false
-    if options then
-        if options.headers ~= nil then
-            assert(type(options.headers) == "boolean", "ftcsv only takes the boolean 'true' or 'false' for the optional parameter 'headers' (default 'true'). You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
-            header = options.headers
-        end
-        if options.rename ~= nil then
-            assert(type(options.rename) == "table", "ftcsv only takes in a key-value table for the optional parameter 'rename'. You passed in '" .. tostring(options.rename) .. "' of type '" .. type(options.rename) .. "'.")
-            rename = options.rename
-        end
-        if options.fieldsToKeep ~= nil then
-            assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.fieldsToKeep) .. "' of type '" .. type(options.fieldsToKeep) .. "'.")
-            ofieldsToKeep = options.fieldsToKeep
-            if header == false then
-                assert(next(rename) ~= nil, "ftcsv can only have fieldsToKeep for header-less files when they have been renamed. Please add the 'rename' option and try again.")
-            end
-        end
-        if options.loadFromString ~= nil then
-            assert(type(options.loadFromString) == "boolean", "ftcsv only takes a boolean value for optional parameter 'loadFromString'. You passed in '" .. tostring(options.loadFromString) .. "' of type '" .. type(options.loadFromString) .. "'.")
-            loadFromString = options.loadFromString
-        end
-    end
-
-    local inputString
-    if loadFromString then
-        inputString = inputFile
-    else
-        inputString = loadFile(inputFile)
-    end
-
-    local CR = sbyte("\r")
-    local LF = sbyte("\n")
-    local quote = sbyte("\"")
-    local doubleQuoteEscape = false
-    local fieldStart = 1
-    local fieldNum = 1
-    local lineNum = 1
-    local skipChar = 0
-    local inputLength = #inputString
-    local headerField = {}
-    local headerSet = false
-    local i = 1
+local function parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
 
     -- keep track of my chars!
     local currentChar, nextChar = sbyte(inputString, i), nil
+    local skipChar = 0
+    local field
+    local fieldStart = i
+    local fieldNum = 1
+    local lineNum = 1
+    local doubleQuoteEscape = false
+    local exit = false
+
+    --bytes
+    local CR = sbyte("\r")
+    local LF = sbyte("\n")
+    local quote = sbyte('"')
+    local delimiterByte = sbyte(delimiter)
+
+    local assignValue
+    local outResults
+    -- the headers haven't been set yet.
+    -- aka this is the first run!
+    if headerField == nil then
+        -- print("this is for headers")
+        headerField = {}
+        assignValue = function()
+            headerField[fieldNum] = field
+            return true
+        end
+    else
+        -- print("this is for magic")
+        outResults = {}
+        outResults[1] = {}
+        assignValue = function()
+            outResults[lineNum][headerField[fieldNum]] = field
+        end
+    end
 
     while i <= inputLength do
         -- go by two chars at a time! currentChar is set at the bottom.
@@ -230,13 +183,15 @@ function ftcsv.parse(inputFile, delimiter, options)
 
         -- create some fields if we can!
         elseif currentChar == delimiterByte then
-            -- for that first field
-            if not headerSet and lineNum == 1 then
-                headerField[fieldNum] = fieldNum
-            end
             -- create the new field
             -- print(headerField[fieldNum])
-            doubleQuoteEscape = createNewField(inputString, quote, fieldStart, i, outResults[lineNum], headerField[fieldNum], doubleQuoteEscape, fieldsToKeep)
+            if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
+                field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
+            -- print("FIELD", field, "FIELDEND", headerField[fieldNum], lineNum)
+            -- outResults[headerField[fieldNum]][lineNum] = field
+                assignValue()
+            end
+            doubleQuoteEscape = false
 
             fieldNum = fieldNum + 1
             fieldStart = i + 1
@@ -245,52 +200,37 @@ function ftcsv.parse(inputFile, delimiter, options)
 
         -- newline?!
         elseif ((currentChar == CR and nextChar == LF) or currentChar == LF) then
-            -- keep track of headers
-            if not headerSet and lineNum == 1 then
-                headerField[fieldNum] = fieldNum
-            end
+            if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
+                -- create the new field
+                field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
 
-            -- create the new field
-            doubleQuoteEscape = createNewField(inputString, quote, fieldStart, i, outResults[lineNum], headerField[fieldNum], doubleQuoteEscape, fieldsToKeep)
-
-            -- if we have headers then we gotta do something about it
-            if lineNum == 1 and not headerSet then
-                if ofieldsToKeep ~= nil then
-                    fieldsToKeep = {}
-                    for j = 1, #ofieldsToKeep do
-                        fieldsToKeep[ofieldsToKeep[j]] = true
-                    end
-                end
-                if header then
-                    headerField, lineNum, headerSet = createHeaders(outResults[lineNum], rename)
-                else
-                    -- files without headers, but with a rename need to be handled too!
-                    if #rename > 0 then
-                        for j = 1, math.max(#rename, #headerField) do
-                            headerField[j] = rename[j]
-                            -- this is an odd case of where there are certain fields to be kept
-                            if fieldsToKeep == nil or fieldsToKeep[rename[j]] then
-                                outResults[1][rename[j]] = outResults[1][j]
-                            end
-                            -- print("J", j)
-                            outResults[1][j] = nil
-                        end
+                -- outResults[headerField[fieldNum]][lineNum] = field
+                exit = assignValue()
+                if exit then
+                    if (currentChar == CR and nextChar == LF) then
+                        return headerField, i + 1
+                    else
+                        return headerField, i
                     end
                 end
             end
+            doubleQuoteEscape = false
 
-            -- incrememnt for new line
-            lineNum = lineNum + 1
-            outResults[lineNum] = {}
-            fieldNum = 1
-            fieldStart = i + 1
-            -- print("fs:", fieldStart)
+            -- determine how line ends
             if (currentChar == CR and nextChar == LF) then
                 -- print("CRLF DETECTED")
                 skipChar = 1
                 fieldStart = fieldStart + 1
                 -- print("fs:", fieldStart)
             end
+
+            -- incrememnt for new line
+            lineNum = lineNum + 1
+            outResults[lineNum] = {}
+            fieldNum = 1
+            fieldStart = i + 1 + skipChar
+            -- print("fs:", fieldStart)
+
         end
 
         i = i + 1 + skipChar
@@ -302,10 +242,11 @@ function ftcsv.parse(inputFile, delimiter, options)
         skipChar = 0
     end
 
-    -- if the line doesn't end happily (with a quote/newline), the last char will be forgotten.
-    -- this should take care of that.
-    createNewField(inputString, quote, fieldStart, i, outResults[lineNum], headerField[fieldNum], doubleQuoteEscape, fieldsToKeep)
-    -- end
+    -- create last new field
+    if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
+        field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
+        assignValue()
+    end
 
     -- clean up last line if it's weird (this happens when there is a CRLF newline at end of file)
     -- doing a count gets it to pick up the oddballs
@@ -325,9 +266,101 @@ function ftcsv.parse(inputFile, delimiter, options)
     return outResults
 end
 
+-- runs the show!
+function ftcsv.parse(inputFile, delimiter, options)
+    -- delimiter MUST be one character
+    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
+
+    -- OPTIONS yo
+    local header = true
+    local rename
+    local fieldsToKeep = nil
+    local loadFromString = false
+    local headerFunc
+    if options then
+        if options.headers ~= nil then
+            assert(type(options.headers) == "boolean", "ftcsv only takes the boolean 'true' or 'false' for the optional parameter 'headers' (default 'true'). You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
+            header = options.headers
+        end
+        if options.rename ~= nil then
+            assert(type(options.rename) == "table", "ftcsv only takes in a key-value table for the optional parameter 'rename'. You passed in '" .. tostring(options.rename) .. "' of type '" .. type(options.rename) .. "'.")
+            rename = options.rename
+        end
+        if options.fieldsToKeep ~= nil then
+            assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.fieldsToKeep) .. "' of type '" .. type(options.fieldsToKeep) .. "'.")
+            local ofieldsToKeep = options.fieldsToKeep
+            if ofieldsToKeep ~= nil then
+                fieldsToKeep = {}
+                for j = 1, #ofieldsToKeep do
+                    fieldsToKeep[ofieldsToKeep[j]] = true
+                end
+            end
+            if header == false then
+                assert(next(rename) ~= nil, "ftcsv can only have fieldsToKeep for header-less files when they have been renamed. Please add the 'rename' option and try again.")
+            end
+        end
+        if options.loadFromString ~= nil then
+            assert(type(options.loadFromString) == "boolean", "ftcsv only takes a boolean value for optional parameter 'loadFromString'. You passed in '" .. tostring(options.loadFromString) .. "' of type '" .. type(options.loadFromString) .. "'.")
+            loadFromString = options.loadFromString
+        end
+        if options.headerFunc ~= nil then
+            assert(type(options.headerFunc) == "function", "ftcsv only takes a function value for optional parameter 'headerFunc'. You passed in '" .. tostring(options.headerFunc) .. "' of type '" .. type(options.headerFunc) .. "'.")
+            headerFunc = options.headerFunc
+        end
+    end
+
+    -- handle input via string or file!
+    local inputString
+    if loadFromString then
+        inputString = inputFile
+    else
+        inputString = loadFile(inputFile)
+    end
+    local inputLength = #inputString
+
+    -- parse through the headers!
+    local headerField, i = parseString(inputString, inputLength, delimiter, 0)
+    i = i + 1 -- start at the next char
+
+    -- for files where there aren't headers!
+    if header == false then
+        i = 0
+        for j = 1, #headerField do
+            headerField[j] = j
+        end
+    end
+
+    -- rename fields as needed!
+    if rename then
+        -- basic rename (["a" = "apple"])
+        for j = 1, #headerField do
+            if rename[headerField[j]] then
+                -- print("RENAMING", headerField[j], rename[headerField[j]])
+                headerField[j] = rename[headerField[j]]
+            end
+        end
+        -- files without headers, but with a rename need to be handled too!
+        if #rename > 0 then
+            for j = 1, #rename do
+                headerField[j] = rename[j]
+            end
+        end
+    end
+
+    -- apply some sweet header manuipulation
+    if headerFunc then
+        for j = 1, #headerField do
+            headerField[j] = headerFunc(headerField[j])
+        end
+    end
+
+    local output = parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
+    return output
+end
+
 -- a function that delimits " to "", used by the writer
 local function delimitField(field)
-    local field = tostring(field)
+    field = tostring(field)
     if field:find('"') then
         return field:gsub('"', '""')
     else
