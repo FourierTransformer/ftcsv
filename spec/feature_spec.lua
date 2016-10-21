@@ -163,4 +163,37 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle encoding files", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].A = "apple"
+		expected[1].B = "banana"
+		expected[1].C = "carrot"
+		local actual = ftcsv.parse(ftcsv.encode(expected, ","), ",", {loadFromString=true})
+		local expected = ftcsv.parse("A,B,C\napple,banana,carrot", ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle encoding files with odd delimiters", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].A = "apple"
+		expected[1].B = "banana"
+		expected[1].C = "carrot"
+		local actual = ftcsv.parse(ftcsv.encode(expected, ">"), ">", {loadFromString=true})
+		local expected = ftcsv.parse("A,B,C\napple,banana,carrot", ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle encoding files with only certain fields to keep", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].A = "apple"
+		expected[1].B = "banana"
+		expected[1].C = "carrot"
+		local actual = ftcsv.parse(ftcsv.encode(expected, ",", {fieldsToKeep={"A", "B"}}), ",", {loadFromString=true})
+		local expected = ftcsv.parse("A,B\napple,banana", ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
 end)
