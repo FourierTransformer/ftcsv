@@ -107,11 +107,6 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
-	it("should error out for fieldsToKeep if no headers and no renaming", function()
-		local options = {loadFromString=true, headers=false, fieldsToKeep={1, 2}}
-		assert.has.errors(function() ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options) end)
-	end)
-
 	it("should handle only renaming fields from files without headers", function()
 		local expected = {}
 		expected[1] = {}

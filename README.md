@@ -117,8 +117,14 @@ I did some basic testing and found that in lua, if you want to iterate over a st
 
 
 
+## Error Handling
+ftcsv returns a litany of errors when passed a bad csv file or incorrect parameters. You can find a more detailed explanation of the more cryptic errors in [ERRORS.md](ERRORS.md)
+
+
+
 ## Contributing
 Feel free to create a new issue for any bugs you've found or help you need. If you want to contribute back to the project please do the following:
+ 0. If it's a major change (aka more than a quick little < 5 line bugfix), please create an issue so we can discuss it!
  1. Fork the repo
  2. Create a new branch
  3. Push your changes to the branch

@@ -1,5 +1,5 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.1.1',
+    _VERSION = 'ftcsv 1.1.2',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
@@ -97,7 +97,7 @@ end
 -- load an entire file into memory
 local function loadFile(textFile)
     local file = io.open(textFile, "r")
-    if not file then error("File not found at " .. textFile) end
+    if not file then error("ftcsv: File not found at " .. textFile) end
     local allLines = file:read("*all")
     file:close()
     return allLines
@@ -156,7 +156,21 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         outResults = {}
         outResults[1] = {}
         assignValue = function()
-            outResults[lineNum][headerField[fieldNum]] = field
+            if not pcall(function()
+                outResults[lineNum][headerField[fieldNum]] = field
+            end) then
+                error('ftcsv: too many columns in row ' .. lineNum)
+            end
+        end
+    end
+
+    -- calculate the initial line count (note: this can include duplicates)
+    local headerFieldsExist = {}
+    local initialLineCount = 0
+    for _, value in pairs(headerField) do
+        if not headerFieldsExist[value] and (fieldsToKeep == nil or fieldsToKeep[value]) then
+            headerFieldsExist[value] = true
+            initialLineCount = initialLineCount + 1
         end
     end
 
@@ -225,6 +239,9 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
             end
 
             -- incrememnt for new line
+            if fieldNum < initialLineCount then
+                error('ftcsv: too few columns in row ' .. lineNum)
+            end
             lineNum = lineNum + 1
             outResults[lineNum] = {}
             fieldNum = 1
@@ -251,16 +268,20 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
     -- clean up last line if it's weird (this happens when there is a CRLF newline at end of file)
     -- doing a count gets it to pick up the oddballs
     local finalLineCount = 0
-    for _, _ in pairs(outResults[lineNum]) do
+    local lastValue = nil
+    for k, v in pairs(outResults[lineNum]) do
         finalLineCount = finalLineCount + 1
+        lastValue = v
     end
-    local initialLineCount = 0
-    for _, _ in pairs(outResults[1]) do
-        initialLineCount = initialLineCount + 1
-    end
+
+    -- this indicates a CRLF
     -- print("Final/Initial", finalLineCount, initialLineCount)
-    if finalLineCount ~= initialLineCount then
+    if finalLineCount == 1 and lastValue == "" then
         outResults[lineNum] = nil
+
+    -- otherwise there might not be enough line
+    elseif finalLineCount < initialLineCount then
+        error('ftcsv: too few columns in row ' .. lineNum)
     end
 
     return outResults
@@ -295,8 +316,8 @@ function ftcsv.parse(inputFile, delimiter, options)
                     fieldsToKeep[ofieldsToKeep[j]] = true
                 end
             end
-            if header == false then
-                assert(next(rename) ~= nil, "ftcsv can only have fieldsToKeep for header-less files when they have been renamed. Please add the 'rename' option and try again.")
+            if header == false and options.rename == nil then
+                error("ftcsv: fieldsToKeep only works with header-less files when using the 'rename' functionality")
             end
         end
         if options.loadFromString ~= nil then
@@ -318,9 +339,21 @@ function ftcsv.parse(inputFile, delimiter, options)
     end
     local inputLength = #inputString
 
+    -- if they sent in an empty file...
+    if inputLength == 0 then
+        error('ftcsv: Cannot parse an empty file')
+    end
+
     -- parse through the headers!
     local headerField, i = parseString(inputString, inputLength, delimiter, 0)
     i = i + 1 -- start at the next char
+
+    -- make sure a header isn't empty
+    for _, header in ipairs(headerField) do
+        if #header == 0 then
+            error('ftcsv: Cannot parse a file which contains empty headers')
+        end
+    end
 
     -- for files where there aren't headers!
     if header == false then
@@ -347,7 +380,7 @@ function ftcsv.parse(inputFile, delimiter, options)
         end
     end
 
-    -- apply some sweet header manuipulation
+    -- apply some sweet header manipulation
     if headerFunc then
         for j = 1, #headerField do
             headerField[j] = headerFunc(headerField[j])
@@ -374,7 +407,7 @@ local function writer(inputTable, dilimeter, headers)
     -- they came in
     for i = 1, #headers do
         if inputTable[1][headers[i]] == nil then
-            error("the field '" .. headers[i] .. "' doesn't exist in the table")
+            error("ftcsv: the field '" .. headers[i] .. "' doesn't exist in the inputTable")
         end
         if headers[i]:find('"') then
             headers[i] = headers[i]:gsub('"', '\\"')
