@@ -23,6 +23,7 @@ local files = {
 	"newlines",
 	"newlines_crlf",
 	"quotes_and_newlines",
+	"quotes_non_escaped",
 	"simple",
 	"simple_crlf",
 	"utf8"

@@ -1,5 +1,5 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.1.2',
+    _VERSION = 'ftcsv 1.1.3',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
@@ -187,9 +187,11 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
             fieldStart = i + 2
             -- print("fs+2:", fieldStart)
 
-        -- identifies the escape toggle
-        elseif currentChar == quote and nextChar ~= quote then
-            -- print("ESCAPE TOGGLE")
+        -- identifies the escape toggle.
+        -- This can only happen if fields have quotes around them
+        -- so the current "start" has to be where a quote character is.
+        elseif currentChar == quote and nextChar ~= quote and fieldStart == i then
+            -- print("New Quoted Field", i)
             fieldStart = i + 1
             i, doubleQuoteEscape = M.findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
             -- print("I VALUE", i, doubleQuoteEscape)
@@ -345,7 +347,7 @@ function ftcsv.parse(inputFile, delimiter, options)
     end
 
     -- parse through the headers!
-    local headerField, i = parseString(inputString, inputLength, delimiter, 0)
+    local headerField, i = parseString(inputString, inputLength, delimiter, 1)
     i = i + 1 -- start at the next char
 
     -- make sure a header isn't empty
