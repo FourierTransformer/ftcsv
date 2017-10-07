@@ -16,7 +16,7 @@ luarocks install ftcsv
 
 
 ## Parsing
-###`ftcsv.parse(fileName, delimiter [, options])`
+### `ftcsv.parse(fileName, delimiter [, options])`
 
 ftcsv will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
 
@@ -92,7 +92,8 @@ For all tested examples, take a look in /spec/feature_spec.lua
 
 
 ## Encoding
-###`ftcsv.encode(inputTable, delimiter[, options])`
+### `ftcsv.encode(inputTable, delimiter[, options])`
+
 ftcsv can also take a lua table and turn it into a text string to be written to a file. It has two required parameters, an inputTable and a delimiter. You can use it to write out a file like this:
 ```lua
 local fileOutput = ftcsv.encode(users, ",")
@@ -124,14 +125,14 @@ ftcsv returns a litany of errors when passed a bad csv file or incorrect paramet
 
 ## Contributing
 Feel free to create a new issue for any bugs you've found or help you need. If you want to contribute back to the project please do the following:
- 0. If it's a major change (aka more than a quick little < 5 line bugfix), please create an issue so we can discuss it!
+ 0. If it's a major change (aka more than a quick bugfix), please create an issue so we can discuss it!
  1. Fork the repo
  2. Create a new branch
  3. Push your changes to the branch
  4. Run the test suite and make sure it still works
  5. Submit a pull request
- 6. ???
- 7. Enjoy the changes made to the repo!
+ 6. Wait for review
+ 7. Enjoy the changes made!
 
 
 
