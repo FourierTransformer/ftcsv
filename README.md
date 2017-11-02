@@ -70,6 +70,22 @@ ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
 	local actual = ftcsv.parse("a,b,c\napple,banana,carrot", ",", options)
  	```
 
+ - `rowFunc`
+
+ 	Applies a function to every row in the dataset.  `rowFunc` will be passed a table containing the data for the row, and the row number.  It should return a table which will be used in place of the original data table, or `nil` to remove the row entirely.
+
+ 	Ex: making field `a` uppercase
+ 	```lua
+ 	local options = {
+		loadFromString=true,
+		rowFunc=function(row, num)
+			row.a = string.upper(row.a)
+			return row
+		end
+	}
+	local actual = ftcsv.parse("a,b,c\napple,banana,carrot", ",", options)
+ 	```
+
  - `headers`
 
  	Set `headers` to `false` if the file you are reading doesn't have any headers. This will cause ftcsv to create indexed tables rather than a key-value tables for the output.

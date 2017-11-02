@@ -122,7 +122,7 @@ local function createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
 end
 
 -- main function used to parse
-local function parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
+local function parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep, rowFunc)
 
     -- keep track of my chars!
     local currentChar, nextChar = sbyte(inputString, i), nil
@@ -240,11 +240,21 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
                 -- print("fs:", fieldStart)
             end
 
-            -- incrememnt for new line
+            -- check the column count
             if fieldNum < initialLineCount then
                 error('ftcsv: too few columns in row ' .. lineNum)
             end
-            lineNum = lineNum + 1
+
+            -- transform the row using the supplied function
+            if rowFunc then
+                outResults[lineNum] = rowFunc(outResults[lineNum], lineNum)
+            end
+
+            -- incrememnt for new line, if row transformation hasn't removed the current row.
+            if outResults[lineNum] then
+                lineNum = lineNum + 1
+            end
+
             outResults[lineNum] = {}
             fieldNum = 1
             fieldStart = i + 1 + skipChar
@@ -284,6 +294,10 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
     -- otherwise there might not be enough line
     elseif finalLineCount < initialLineCount then
         error('ftcsv: too few columns in row ' .. lineNum)
+
+    -- else it is a fully-formed line, so do row transformation if required.
+    elseif rowFunc then
+        outResults[lineNum] = rowFunc(outResults[lineNum], lineNum)
     end
 
     return outResults
@@ -300,6 +314,7 @@ function ftcsv.parse(inputFile, delimiter, options)
     local fieldsToKeep = nil
     local loadFromString = false
     local headerFunc
+    local rowFunc
     if options then
         if options.headers ~= nil then
             assert(type(options.headers) == "boolean", "ftcsv only takes the boolean 'true' or 'false' for the optional parameter 'headers' (default 'true'). You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
@@ -329,6 +344,10 @@ function ftcsv.parse(inputFile, delimiter, options)
         if options.headerFunc ~= nil then
             assert(type(options.headerFunc) == "function", "ftcsv only takes a function value for optional parameter 'headerFunc'. You passed in '" .. tostring(options.headerFunc) .. "' of type '" .. type(options.headerFunc) .. "'.")
             headerFunc = options.headerFunc
+        end
+        if options.rowFunc ~= nil then
+            assert(type(options.rowFunc) == "function", "ftcsv only takes a function value for optional parameter 'rowFunc'. You passed in '" .. tostring(options.rowFunc) .. "' of type '" .. type(options.rowFunc) .. "'.")
+            rowFunc = options.rowFunc
         end
     end
 
@@ -389,7 +408,7 @@ function ftcsv.parse(inputFile, delimiter, options)
         end
     end
 
-    local output = parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
+    local output = parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep, rowFunc)
     return output
 end
 

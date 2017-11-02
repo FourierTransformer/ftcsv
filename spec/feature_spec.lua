@@ -158,6 +158,19 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should make column A uppercase via rowFunc", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "APPLE"
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local actual = ftcsv.parse("a,b,c\napple,banana,carrot", ",", {loadFromString=true, rowFunc=function(row)
+      row.a = string.upper(row.a)
+      return row
+    end})
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle encoding files", function()
 		local expected = {}
 		expected[1] = {}
