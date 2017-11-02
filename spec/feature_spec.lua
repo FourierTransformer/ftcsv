@@ -21,6 +21,22 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle merging multiple datasets", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		expected[2] = {}
+		expected[2].b = "banana"
+		expected[2].c = "carrot"
+		expected[2].d = "damson"
+		expected[2].e = "elderberry"
+		local actual = ftcsv.parse("a,b,c\napple,banana,carrot", ",", {loadFromString=true})
+		ftcsv.parse("b,c,d,e\nbanana,carrot,damson,elderberry", ",", {loadFromString=true, rowTable=actual})
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle renaming a field", function()
 		local expected = {}
 		expected[1] = {}

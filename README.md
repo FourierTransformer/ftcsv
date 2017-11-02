@@ -88,6 +88,19 @@ ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
 
  	In the above example, the first field becomes 'a', the second field becomes 'b' and so on.
 
+ - `rowTable`
+
+ 	If you want to merge multiple CSV files, you can set `rowTable` to be an existing table to which ftcsv will append new rows.
+
+ 	Note: headers are not compared between multiple datasets.  If there is a mismatch between headers of different CSV files, then rows from each CSV file will have missing fields.
+
+ 	```lua
+ 	local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "f"}}
+	local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", ",", options)
+	options.rowTable = actual
+	ftcsv.parse("a,b,c\r\ndamson,elderberry,fig", ",", options)
+ 	```
+
 For all tested examples, take a look in /spec/feature_spec.lua
 
 

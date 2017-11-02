@@ -122,7 +122,7 @@ local function createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
 end
 
 -- main function used to parse
-local function parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
+local function parseString(outResults, inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
 
     -- keep track of my chars!
     local currentChar, nextChar = sbyte(inputString, i), nil
@@ -141,7 +141,6 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
     local delimiterByte = sbyte(delimiter)
 
     local assignValue
-    local outResults
     -- the headers haven't been set yet.
     -- aka this is the first run!
     if headerField == nil then
@@ -153,8 +152,9 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         end
     else
         -- print("this is for magic")
-        outResults = {}
-        outResults[1] = {}
+        outResults = outResults or {}
+        lineNum = #outResults + 1
+        outResults[lineNum] = {}
         assignValue = function()
             if not pcall(function()
                 outResults[lineNum][headerField[fieldNum]] = field
@@ -300,6 +300,7 @@ function ftcsv.parse(inputFile, delimiter, options)
     local fieldsToKeep = nil
     local loadFromString = false
     local headerFunc
+    local rowTable = {}
     if options then
         if options.headers ~= nil then
             assert(type(options.headers) == "boolean", "ftcsv only takes the boolean 'true' or 'false' for the optional parameter 'headers' (default 'true'). You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
@@ -330,6 +331,10 @@ function ftcsv.parse(inputFile, delimiter, options)
             assert(type(options.headerFunc) == "function", "ftcsv only takes a function value for optional parameter 'headerFunc'. You passed in '" .. tostring(options.headerFunc) .. "' of type '" .. type(options.headerFunc) .. "'.")
             headerFunc = options.headerFunc
         end
+        if options.rowTable ~= nil then
+            assert(type(options.rowTable) == "table", "ftcsv only takes in a table for the optional parameter 'rowTable'. You passed in '" .. tostring(options.rowTable) .. "' of type '" .. type(options.rowTable) .. "'.")
+            rowTable = options.rowTable
+        end
     end
 
     -- handle input via string or file!
@@ -347,7 +352,7 @@ function ftcsv.parse(inputFile, delimiter, options)
     end
 
     -- parse through the headers!
-    local headerField, i = parseString(inputString, inputLength, delimiter, 1)
+    local headerField, i = parseString(nil, inputString, inputLength, delimiter, 1)
     i = i + 1 -- start at the next char
 
     -- make sure a header isn't empty
@@ -389,8 +394,8 @@ function ftcsv.parse(inputFile, delimiter, options)
         end
     end
 
-    local output = parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
-    return output
+    rowTable = parseString(rowTable, inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
+    return rowTable
 end
 
 -- a function that delimits " to "", used by the writer
