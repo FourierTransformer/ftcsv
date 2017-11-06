@@ -1,9 +1,9 @@
 # ftcsv
 [![Build Status](https://travis-ci.org/FourierTransformer/ftcsv.svg?branch=master)](https://travis-ci.org/FourierTransformer/ftcsv) [![Coverage Status](https://coveralls.io/repos/github/FourierTransformer/ftcsv/badge.svg?branch=master)](https://coveralls.io/github/FourierTransformer/ftcsv?branch=master)
 
-ftcsv, a fairly fast csv library written in pure Lua. It's been tested with LuaJIT 2.0/2.1 and Lua 5.1, 5.2, and 5.3
+ftcsv is a fast csv library written in pure Lua. It's been tested with LuaJIT 2.0/2.1 and Lua 5.1, 5.2, and 5.3
 
-It works well for CSVs that can easily be fully loaded into memory (easily up to a hundred MB). Currently, there isn't a "large" file mode with proper readers and writers for ingesting CSVs in bulk with a fixed amount of memory. It correctly handles both `\n` (LF) and `\r\n` (CRLF) line endings (ie it should work with Windows and Mac/Linux line endings) and has UTF-8 support.
+It features two parsing modes, one for CSVs that can easily be loaded into memory (a few hundred MBs), and another for loading files using an iterator - useful for customized loading and manipulating large files. It correctly handles both `\n` (LF) and `\r\n` (CRLF) line endings (ie it should work with Windows and Mac/Linux line endings) and has UTF-8 support.
 
 
 
@@ -16,15 +16,33 @@ luarocks install ftcsv
 
 
 ## Parsing
+There are two main parsing methods: `ftcv.parse` and `ftcsv.parseLine`.
+`ftcsv.parse` loads the entire file and parses it, while `ftcsv.parseLine` is intended to be used as an iterator with a for loop returning one parsed line at a time.
+
 ### `ftcsv.parse(fileName, delimiter [, options])`
 
-ftcsv will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
+`ftcsv.parse` will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
 
 Just loading a csv file:
 ```lua
-local ftcsv = require('ftcsv')
+local ftcsv = require("ftcsv")
 local zipcodes = ftcsv.parse("free-zipcode-database.csv", ",")
 ```
+
+### `ftcsv.parseLine(fileName, delimiter, bufferSize [, options])`
+`ftcsv.parseLine` will open a file and read `bufferSize` bytes of the file. It parses these lines and returns one line at a time. When all the lines in the buffer are read, it will read in another `bufferSize` bytes of a file and repeat the process until there are no more bytes left in the file to read. The `bufferSize` must be at least the length of the longest row. If the `bufferSize` is too small, an error is returned. If `bufferSize` is the length of the entire file, all of it will be read and returned one line at a time (performance is roughly the same as `ftcsv.parse`). The options are the same for `parseLine` and `parse` and are described below, with the exception of `loadFromString` as `parseLine` currently only works with files.
+
+Parsing through a csv file:
+```lua
+local ftcsv = require("ftcsv")
+for zipcode in ftcsv.parseLine("free-zipcode-database.csv", ",", 10^6) do
+    print(zipcode.Zipcode)
+    print(zipcode.State)
+end
+```
+
+
+
 
 ### Options
 The following are optional parameters passed in via the third argument as a table. For example if you wanted to `loadFromString` and not use `headers`, you could use the following:

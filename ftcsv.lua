@@ -5,7 +5,7 @@ local ftcsv = {
     _LICENSE     = [[
         The MIT License (MIT)
 
-        Copyright (c) 2016 Shakil Thakur
+        Copyright (c) 2016-2017 Shakil Thakur
 
         Permission is hereby granted, free of charge, to any person obtaining a copy
         of this software and associated documentation files (the "Software"), to deal
@@ -74,7 +74,9 @@ else
     function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
         local firstCharIndex = 1
         local firstChar, iChar = nil, nil
+        -- print("inputLength", inputLength)
         repeat
+            if i == nil then return end
             firstCharIndex, i = inputString:find('".?', i+1)
             firstChar = sbyte(inputString, firstCharIndex)
             iChar = sbyte(inputString, i)
@@ -122,15 +124,17 @@ local function createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
 end
 
 -- main function used to parse
-local function parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
+local function parseString(inputString, delimiter, i, headerField, fieldsToKeep, buffered)
 
     -- keep track of my chars!
+    local inputLength = #inputString
     local currentChar, nextChar = sbyte(inputString, i), nil
     local skipChar = 0
     local field
     local fieldStart = i
     local fieldNum = 1
     local lineNum = 1
+    local lineStart = i
     local doubleQuoteEscape = false
     local exit = false
 
@@ -242,16 +246,34 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
 
             -- incrememnt for new line
             if fieldNum < initialLineCount then
-                error('ftcsv: too few columns in row ' .. lineNum)
+                -- sometimes in buffered mode, the buffer starts with a newline
+                -- this skips the newline and lets the parsing continue.
+                if lineNum == 1 and fieldNum == 1 and buffered then
+                    -- print("fieldNum", fieldNum)
+                    -- print("initialLineCount", initialLineCount)
+                    -- print("lineNum", lineNum)
+                    -- print(i)
+                    fieldStart = i + 1 + skipChar
+                    lineStart = fieldStart
+                else
+                    -- return "YA"
+                    error('ftcsv: too few columns in row ' .. lineNum)
+                end
+            else
+                lineNum = lineNum + 1
+                outResults[lineNum] = {}
+                fieldNum = 1
+                fieldStart = i + 1 + skipChar
+                lineStart = fieldStart
+                -- print("fs:", fieldStart)
             end
-            lineNum = lineNum + 1
-            outResults[lineNum] = {}
-            fieldNum = 1
-            fieldStart = i + 1 + skipChar
-            -- print("fs:", fieldStart)
 
         end
-
+        -- this happens when you can't find a closing quote - usually means in the middle of a buffer
+        if i == nil and buffered then
+            outResults[lineNum] = nil
+            return outResults, lineStart
+        end
         i = i + 1 + skipChar
         if (skipChar > 0) then
             currentChar = sbyte(inputString, i)
@@ -267,11 +289,16 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         assignValue()
     end
 
+    -- check if outResults exists
+    if outResults == nil and buffered then
+        error("ftcsv: bufferSize needs to be larger to parse this file")
+    end
+
     -- clean up last line if it's weird (this happens when there is a CRLF newline at end of file)
     -- doing a count gets it to pick up the oddballs
     local finalLineCount = 0
     local lastValue = nil
-    for k, v in pairs(outResults[lineNum]) do
+    for _, v in pairs(outResults[lineNum]) do
         finalLineCount = finalLineCount + 1
         lastValue = v
     end
@@ -283,31 +310,76 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
 
     -- otherwise there might not be enough line
     elseif finalLineCount < initialLineCount then
-        error('ftcsv: too few columns in row ' .. lineNum)
+        if buffered then
+            outResults[lineNum] = nil
+            -- print(#outResults)
+            return outResults, lineStart
+        else
+            error('ftcsv: too few columns in row ' .. lineNum)
+        end
     end
 
-    return outResults
+    -- print("Made it to the end?")
+    -- print("i", i, "inputLength", inputLength)
+    return outResults, i
 end
 
--- runs the show!
-function ftcsv.parse(inputFile, delimiter, options)
+local function handleHeaders(headerField, options)
+    -- make sure a header isn't empty
+    for _, headerName in ipairs(headerField) do
+        if #headerName == 0 then
+            error('ftcsv: Cannot parse a file which contains empty headers')
+        end
+    end
+
+    -- for files where there aren't headers!
+    if options.headers == false then
+        -- i = 0
+        for j = 1, #headerField do
+            headerField[j] = j
+        end
+    end
+
+    -- rename fields as needed!
+    if options.rename then
+        -- basic rename (["a" = "apple"])
+        for j = 1, #headerField do
+            if options.rename[headerField[j]] then
+                -- print("RENAMING", headerField[j], options.rename[headerField[j]])
+                headerField[j] = options.rename[headerField[j]]
+            end
+        end
+        -- files without headers, but with a options.rename need to be handled too!
+        if #options.rename > 0 then
+            for j = 1, #options.rename do
+                headerField[j] = options.rename[j]
+            end
+        end
+    end
+
+    -- apply some sweet header manipulation
+    if options.headerFunc then
+        for j = 1, #headerField do
+            headerField[j] = options.headerFunc(headerField[j])
+        end
+    end
+
+    return headerField
+end
+
+local function parseOptions(delimiter, options)
     -- delimiter MUST be one character
     assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
 
     -- OPTIONS yo
-    local header = true
-    local rename
     local fieldsToKeep = nil
-    local loadFromString = false
-    local headerFunc
+
     if options then
         if options.headers ~= nil then
             assert(type(options.headers) == "boolean", "ftcsv only takes the boolean 'true' or 'false' for the optional parameter 'headers' (default 'true'). You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
-            header = options.headers
         end
         if options.rename ~= nil then
             assert(type(options.rename) == "table", "ftcsv only takes in a key-value table for the optional parameter 'rename'. You passed in '" .. tostring(options.rename) .. "' of type '" .. type(options.rename) .. "'.")
-            rename = options.rename
         end
         if options.fieldsToKeep ~= nil then
             assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.fieldsToKeep) .. "' of type '" .. type(options.fieldsToKeep) .. "'.")
@@ -318,79 +390,123 @@ function ftcsv.parse(inputFile, delimiter, options)
                     fieldsToKeep[ofieldsToKeep[j]] = true
                 end
             end
-            if header == false and options.rename == nil then
+            if options.headers == false and options.rename == nil then
                 error("ftcsv: fieldsToKeep only works with header-less files when using the 'rename' functionality")
             end
         end
         if options.loadFromString ~= nil then
             assert(type(options.loadFromString) == "boolean", "ftcsv only takes a boolean value for optional parameter 'loadFromString'. You passed in '" .. tostring(options.loadFromString) .. "' of type '" .. type(options.loadFromString) .. "'.")
-            loadFromString = options.loadFromString
         end
         if options.headerFunc ~= nil then
             assert(type(options.headerFunc) == "function", "ftcsv only takes a function value for optional parameter 'headerFunc'. You passed in '" .. tostring(options.headerFunc) .. "' of type '" .. type(options.headerFunc) .. "'.")
-            headerFunc = options.headerFunc
         end
+    else
+        options = {
+            ["headers"] = true,
+            ["loadFromString"] = false
+        }
     end
+
+    return options, fieldsToKeep
+
+end
+
+-- runs the show!
+function ftcsv.parse(inputFile, delimiter, options)
+    -- make sure options make sense and get fields to keep
+    local options, fieldsToKeep = parseOptions(delimiter, options)
 
     -- handle input via string or file!
     local inputString
-    if loadFromString then
-        inputString = inputFile
-    else
-        inputString = loadFile(inputFile)
-    end
-    local inputLength = #inputString
+    if options.loadFromString then inputString = inputFile
+    else inputString = loadFile(inputFile) end
 
     -- if they sent in an empty file...
-    if inputLength == 0 then
+    if inputString == "" then
         error('ftcsv: Cannot parse an empty file')
     end
 
     -- parse through the headers!
-    local headerField, i = parseString(inputString, inputLength, delimiter, 1)
-    i = i + 1 -- start at the next char
+    local headerField, i = parseString(inputString, delimiter, 1)
+    -- reset the start if we don't have headers
+    if options.headers == false then i = 0 else i = i + 1 end
+    -- manipulate the headers as per the options
+    headerField = handleHeaders(headerField, options)
 
-    -- make sure a header isn't empty
-    for _, header in ipairs(headerField) do
-        if #header == 0 then
-            error('ftcsv: Cannot parse a file which contains empty headers')
-        end
+    -- actually parse through the whole file
+    local output = parseString(inputString, delimiter, i, headerField, fieldsToKeep)
+    return output, headerField
+end
+
+function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
+    -- make sure options make sense and get fields to keep
+    local options, fieldsToKeep = parseOptions(delimiter, options)
+
+    -- handle the file
+    if options.loadFromString == true then
+        error("ftcsv: parseLine currently doesn't support loading from string")
     end
 
-    -- for files where there aren't headers!
-    if header == false then
-        i = 0
-        for j = 1, #headerField do
-            headerField[j] = j
-        end
+    -- load it up!
+    local file = io.open(inputFile, "r")
+    if not file then error("ftcsv: File not found at " .. inputFile) end
+    local inputString = file:read(bufferSize)
+    -- if they sent in an empty file...
+    if inputString == "" then
+        error('ftcsv: Cannot parse an empty file')
     end
 
-    -- rename fields as needed!
-    if rename then
-        -- basic rename (["a" = "apple"])
-        for j = 1, #headerField do
-            if rename[headerField[j]] then
-                -- print("RENAMING", headerField[j], rename[headerField[j]])
-                headerField[j] = rename[headerField[j]]
+    -- parse through the headers!
+    local headerField, i = parseString(inputString, delimiter, 1, nil, nil, true)
+    -- reset the start if we don't have headers
+    if options.headers == false then i = 0 else i = i + 1 end
+    -- manipulate the headers as per the options
+    headerField = handleHeaders(headerField, options)
+    -- no longer needed!
+    options = nil
+
+    local parsedBuffer, startLine = parseString(inputString, delimiter, i, headerField, fieldsToKeep, true)
+    inputString = string.sub(inputString, startLine)
+    local parsedBufferIndex = 0
+
+    return function()
+        -- check parsed buffer for value
+        parsedBufferIndex = parsedBufferIndex + 1
+        local out = parsedBuffer[parsedBufferIndex]
+
+        -- the last parsedBuffer value is incomplete, this avoids returning it
+        -- if parsedBuffer[parsedBufferIndex+1] then
+        if out then
+            -- print("returning things")
+            return out
+        else
+            -- reads more of the input
+            local newInput = file:read(bufferSize)
+            if not newInput then
+                -- print("closing file")
+                file:close()
+                return
             end
-        end
-        -- files without headers, but with a rename need to be handled too!
-        if #rename > 0 then
-            for j = 1, #rename do
-                headerField[j] = rename[j]
+
+            -- appends the new input to what was left over
+            inputString = inputString .. newInput
+            -- print("input string", #inputString, inputString)
+
+            -- re-analyze and load buffer
+            parsedBuffer, startLine = parseString(inputString, delimiter, 1, headerField, fieldsToKeep, true)
+            parsedBufferIndex = 1
+
+            -- cut the input string down
+            -- print("startLine", startLine)
+            inputString = string.sub(inputString, startLine)
+
+            -- print("parsedBufferSize", #parsedBuffer)
+            if #parsedBuffer == 0 then
+                error("ftcsv: bufferSize needs to be larger to parse this file")
             end
+            return parsedBuffer[parsedBufferIndex]
         end
     end
-
-    -- apply some sweet header manipulation
-    if headerFunc then
-        for j = 1, #headerField do
-            headerField[j] = headerFunc(headerField[j])
-        end
-    end
-
-    local output = parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
-    return output
 end
 
 -- a function that delimits " to "", used by the writer
