@@ -390,7 +390,7 @@ function ftcsv.parse(inputFile, delimiter, options)
     end
 
     local output = parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
-    return output
+    return output, headerField
 end
 
 -- a function that delimits " to "", used by the writer

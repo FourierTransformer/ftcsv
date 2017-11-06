@@ -42,6 +42,13 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should return a table with column headers", function()
+		local expected = { 'd', 'e', 'f' }
+		local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "f"}}
+		local _, actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", ",", options)
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle renaming multiple fields to the same out value", function()
 		local expected = {}
 		expected[1] = {}
