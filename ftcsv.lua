@@ -347,7 +347,13 @@ function ftcsv.parse(inputFile, delimiter, options)
     end
 
     -- parse through the headers!
-    local headerField, i = parseString(inputString, inputLength, delimiter, 1)
+    local startLine = 1
+
+    -- check for BOM
+    if string.byte(inputString, 1) == 239 and string.byte(inputString, 2) == 187 and string.byte(inputString, 3) == 191 then
+        startLine = 4
+    end
+    local headerField, i = parseString(inputString, inputLength, delimiter, startLine)
     i = i + 1 -- start at the next char
 
     -- make sure a header isn't empty

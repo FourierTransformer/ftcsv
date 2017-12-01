@@ -10,6 +10,7 @@ local function loadFile(textFile)
 end
 
 local files = {
+	"bom-os9",
 	"comma_in_quotes",
 	"correctness",
 	"empty",
@@ -22,6 +23,7 @@ local files = {
 	"json_no_newline",
 	"newlines",
 	"newlines_crlf",
+	"os9",
 	"quotes_and_newlines",
 	"quotes_non_escaped",
 	"simple",
