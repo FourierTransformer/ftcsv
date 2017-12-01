@@ -215,7 +215,7 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         -- end
 
         -- newline?!
-        elseif ((currentChar == CR and nextChar == LF) or currentChar == LF) then
+        elseif (currentChar == CR or currentChar == LF) then
             if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
                 -- create the new field
                 field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
