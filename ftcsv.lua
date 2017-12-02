@@ -1,5 +1,5 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.1.3',
+    _VERSION = 'ftcsv 1.1.4',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
@@ -215,7 +215,7 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         -- end
 
         -- newline?!
-        elseif ((currentChar == CR and nextChar == LF) or currentChar == LF) then
+        elseif (currentChar == CR or currentChar == LF) then
             if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
                 -- create the new field
                 field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
@@ -347,7 +347,13 @@ function ftcsv.parse(inputFile, delimiter, options)
     end
 
     -- parse through the headers!
-    local headerField, i = parseString(inputString, inputLength, delimiter, 1)
+    local startLine = 1
+
+    -- check for BOM
+    if string.byte(inputString, 1) == 239 and string.byte(inputString, 2) == 187 and string.byte(inputString, 3) == 191 then
+        startLine = 4
+    end
+    local headerField, i = parseString(inputString, inputLength, delimiter, startLine)
     i = i + 1 -- start at the next char
 
     -- make sure a header isn't empty
