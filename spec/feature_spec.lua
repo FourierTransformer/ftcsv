@@ -114,6 +114,50 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle files without (headers and newlines)", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = "carrot"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse("apple>banana>carrot", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle files without (headers and newlines) w/newline at end", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = "carrot"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse("apple>banana>carrot\n", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle files without (headers and newlines) w/crlf", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = "carrot"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse("apple>banana>carrot\r\n", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle files without (headers and newlines) w/cr", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = "carrot"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse("apple>banana>carrot\r", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle only renaming fields from files without headers", function()
 		local expected = {}
 		expected[1] = {}
