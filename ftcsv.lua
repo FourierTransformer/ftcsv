@@ -374,7 +374,7 @@ function ftcsv.parse(inputFile, delimiter, options)
 
     -- for files where there aren't headers!
     if header == false then
-        i = 0
+        i = 1
         for j = 1, #headerField do
             headerField[j] = j
         end
