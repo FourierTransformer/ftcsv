@@ -45,7 +45,6 @@ local ssub = string.sub
 if type(jit) == 'table' then
     -- finds the end of an escape sequence
     function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
-        -- local doubleQuoteEscape = doubleQuoteEscape
         local currentChar, nextChar = sbyte(inputString, i), nil
         while i <= inputLength do
             -- print(i)
@@ -72,24 +71,19 @@ if type(jit) == 'table' then
 else
     -- vanilla lua closing quote finder
     function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
-        local firstCharIndex = 1
-        local firstChar, iChar = nil, nil
-        repeat
-            firstCharIndex, i = inputString:find('".?', i+1)
-            firstChar = sbyte(inputString, firstCharIndex)
-            iChar = sbyte(inputString, i)
-            -- nextChar = string.byte(inputString, i+1)
-            -- print("HI", offset, i)
-            -- print(firstChar, iChar)
-            if firstChar == quote and iChar == quote then
-                doubleQuoteEscape = true
-            end
-        until iChar ~= quote
+        local j, difference
+        i, j = inputString:find('"+', i)
+        if j == nil then return end
         if i == nil then
             return inputLength-1, doubleQuoteEscape
         end
-        -- print("exiting", i-2)
-        return i-2, doubleQuoteEscape
+        difference = j - i
+        -- print("difference", difference, "I", i, "J", j)
+        if difference >= 1 then doubleQuoteEscape = true end
+        if difference == 1 then
+            return M.findClosingQuote(j+1, inputLength, inputString, quote, doubleQuoteEscape)
+        end
+        return j-1, doubleQuoteEscape
     end
 
 end
@@ -103,10 +97,10 @@ local function loadFile(textFile)
     return allLines
 end
 
--- creates a new field and adds it to the main table
+-- creates a new field
 local function createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
     local field
-    -- so, if we just recently de-escaped, we don't want the trailing \"
+    -- so, if we just recently de-escaped, we don't want the trailing "
     if sbyte(inputString, i-1) == quote then
         -- print("Skipping last \"")
         field = ssub(inputString, fieldStart, i-2)
@@ -131,7 +125,7 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
     local fieldStart = i
     local fieldNum = 1
     local lineNum = 1
-    local doubleQuoteEscape = false
+    local doubleQuoteEscape, emptyIdentified = false, false
     local exit = false
 
     --bytes
@@ -149,12 +143,14 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         headerField = {}
         assignValue = function()
             headerField[fieldNum] = field
+            emptyIdentified = false
             return true
         end
     else
         outResults = {}
         outResults[1] = {}
         assignValue = function()
+            emptyIdentified = false
             if not pcall(function()
                 outResults[lineNum][headerField[fieldNum]] = field
             end) then
@@ -181,9 +177,9 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
 
         -- empty string
         if currentChar == quote and nextChar == quote then
-            -- print("EMPTY STRING")
             skipChar = 1
             fieldStart = i + 2
+            emptyIdentified = true
             -- print("fs+2:", fieldStart)
 
         -- identifies the escape toggle.
@@ -192,6 +188,15 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         elseif currentChar == quote and nextChar ~= quote and fieldStart == i then
             -- print("New Quoted Field", i)
             fieldStart = i + 1
+
+            -- if an empty field was identified before assignment, it means
+            -- that this is a quoted field that starts with escaped quotes
+            -- ex: """a"""
+            if emptyIdentified then
+                fieldStart = fieldStart - 2
+                emptyIdentified = false
+            end
+
             i, doubleQuoteEscape = M.findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
             -- print("I VALUE", i, doubleQuoteEscape)
             skipChar = 1
@@ -211,7 +216,6 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
             fieldNum = fieldNum + 1
             fieldStart = i + 1
             -- print("fs+1:", fieldStart)
-        -- end
 
         -- newline?!
         elseif (currentChar == CR or currentChar == LF) then
@@ -219,7 +223,6 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
                 -- create the new field
                 field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
 
-                -- outResults[headerField[fieldNum]][lineNum] = field
                 exit = assignValue()
                 if exit then
                     if (currentChar == CR and nextChar == LF) then
@@ -235,8 +238,6 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
             if (currentChar == CR and nextChar == LF) then
                 -- print("CRLF DETECTED")
                 skipChar = 1
-                fieldStart = fieldStart + 1
-                -- print("fs:", fieldStart)
             end
 
             -- incrememnt for new line
@@ -269,7 +270,7 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
     -- if there's no newline, the parser doesn't return headers correctly...
     -- ex: a,b,c
     if outResults == nil then
-        return headerField, i
+        return headerField, i-1
     end
 
     -- clean up last line if it's weird (this happens when there is a CRLF newline at end of file)
@@ -355,7 +356,9 @@ function ftcsv.parse(inputFile, delimiter, options)
     local startLine = 1
 
     -- check for BOM
-    if string.byte(inputString, 1) == 239 and string.byte(inputString, 2) == 187 and string.byte(inputString, 3) == 191 then
+    if string.byte(inputString, 1) == 239
+        and string.byte(inputString, 2) == 187
+        and string.byte(inputString, 3) == 191 then
         startLine = 4
     end
     local headerField, i = parseString(inputString, inputLength, delimiter, startLine)
@@ -370,7 +373,7 @@ function ftcsv.parse(inputFile, delimiter, options)
 
     -- for files where there aren't headers!
     if header == false then
-        i = 0
+        i = 1
         for j = 1, #headerField do
             headerField[j] = j
         end

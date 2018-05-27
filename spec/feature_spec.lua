@@ -21,6 +21,46 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle cr loading from string", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local actual = ftcsv.parse("a,b,c\rapple,banana,carrot", ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle quotes loading from string", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local actual = ftcsv.parse('"a","b","c"\n"apple","banana","carrot"', ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle doublequotes loading from string", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = '"apple"'
+		expected[1].b = '"banana"'
+		expected[1].c = '"carrot"'
+		local actual = ftcsv.parse('"a","b","c"\n"""apple""","""banana""","""carrot"""', ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle doublequotes loading from string", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = '"apple"'
+		expected[1].b = 'banana'
+		expected[1].c = '"carrot"'
+		local actual = ftcsv.parse('"a","b","c"\n"""apple""","banana","""carrot"""', ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle renaming a field", function()
 		local expected = {}
 		expected[1] = {}
@@ -122,6 +162,32 @@ describe("csv features", function()
 		expected[1][3] = "carrot"
 		local options = {loadFromString=true, headers=false}
 		local actual = ftcsv.parse("apple>banana>carrot", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle files with quotes and without (headers and newlines)", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = "carrot"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse('"apple">"banana">"carrot"', ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle files with quotes and without (headers and newlines)", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = "carrot"
+		expected[2] = {}
+		expected[2][1] = "diamond"
+		expected[2][2] = "emerald"
+		expected[2][3] = "pearl"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse('"apple">"banana">"carrot"\n"diamond">"emerald">"pearl"', ">", options)
 		assert.are.same(expected, actual)
 	end)
 
