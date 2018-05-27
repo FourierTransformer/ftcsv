@@ -79,6 +79,7 @@ else
             nextChar = sbyte(inputString, i+1)
             if currentChar == quote and nextChar == quote then
                 doubleQuoteEscape = true
+                i = i + 2
             end
         until nextChar ~= quote
         if i == nil then
