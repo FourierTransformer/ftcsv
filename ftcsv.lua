@@ -1,11 +1,11 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.1.4',
+    _VERSION = 'ftcsv 1.1.5',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
         The MIT License (MIT)
 
-        Copyright (c) 2016 Shakil Thakur
+        Copyright (c) 2016-2018 Shakil Thakur
 
         Permission is hereby granted, free of charge, to any person obtaining a copy
         of this software and associated documentation files (the "Software"), to deal
