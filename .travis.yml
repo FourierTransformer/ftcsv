@@ -15,7 +15,7 @@ before_install:
 
 install:
   - luarocks install busted
-  - luarocks install lua-cjson
+  - luarocks install lua-cjson2 # the official repo doesn't run under lua 5.2/5.3 anymore...
   - luarocks install luacov
   - luarocks install luacov-coveralls
 
