@@ -71,21 +71,19 @@ if type(jit) == 'table' then
 else
     -- vanilla lua closing quote finder
     function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
-        local currentChar, nextChar
-        repeat
-            i = inputString:find('"', i)
-            if i == nil then return end
-            currentChar = sbyte(inputString, i)
-            nextChar = sbyte(inputString, i+1)
-            if currentChar == quote and nextChar == quote then
-                doubleQuoteEscape = true
-                i = i + 2
-            end
-        until nextChar ~= quote
+        local j, difference
+        i, j = inputString:find('"+', i)
+        if j == nil then return end
         if i == nil then
             return inputLength-1, doubleQuoteEscape
         end
-        return i-1, doubleQuoteEscape
+        difference = j - i
+        -- print("difference", difference, "I", i, "J", j)
+        if difference >= 1 then doubleQuoteEscape = true end
+        if difference == 1 then
+            return M.findClosingQuote(j+1, inputLength, inputString, quote, doubleQuoteEscape)
+        end
+        return j-1, doubleQuoteEscape
     end
 
 end
