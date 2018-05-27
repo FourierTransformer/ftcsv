@@ -165,6 +165,32 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle files with quotes and without (headers and newlines)", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = "carrot"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse('"apple">"banana">"carrot"', ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle files with quotes and without (headers and newlines)", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = "carrot"
+		expected[2] = {}
+		expected[1][1] = "diamond"
+		expected[1][2] = "emerald"
+		expected[1][3] = "pearl"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse('"apple">"banana">"carrot"\n"diamond">"emerald">"pearl"', ">", options)
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle files without (headers and newlines) w/newline at end", function()
 		local expected = {}
 		expected[1] = {}

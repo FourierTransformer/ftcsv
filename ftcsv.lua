@@ -71,20 +71,20 @@ if type(jit) == 'table' then
 else
     -- vanilla lua closing quote finder
     function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
-        local firstCharIndex
-        local firstChar, iChar
+        local currentChar, nextChar
         repeat
-            firstCharIndex, i = inputString:find('".?', i+1)
-            if i == nil then
-                return inputLength-1, doubleQuoteEscape
-            end
-            firstChar = sbyte(inputString, firstCharIndex)
-            iChar = sbyte(inputString, i)
-            if firstChar == quote and iChar == quote then
+            i = inputString:find('"', i)
+            if i == nil then return end
+            currentChar = sbyte(inputString, i)
+            nextChar = sbyte(inputString, i+1)
+            if currentChar == quote and nextChar == quote then
                 doubleQuoteEscape = true
             end
-        until iChar ~= quote
-        return i-2, doubleQuoteEscape
+        until nextChar ~= quote
+        if i == nil then
+            return inputLength-1, doubleQuoteEscape
+        end
+        return i-1, doubleQuoteEscape
     end
 
 end
@@ -98,10 +98,10 @@ local function loadFile(textFile)
     return allLines
 end
 
--- creates a new field and adds it to the main table
+-- creates a new field
 local function createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
     local field
-    -- so, if we just recently de-escaped, we don't want the trailing \"
+    -- so, if we just recently de-escaped, we don't want the trailing "
     if sbyte(inputString, i-1) == quote then
         -- print("Skipping last \"")
         field = ssub(inputString, fieldStart, i-2)
@@ -239,8 +239,6 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
             if (currentChar == CR and nextChar == LF) then
                 -- print("CRLF DETECTED")
                 skipChar = 1
-                fieldStart = fieldStart + 1
-                -- print("fs:", fieldStart)
             end
 
             -- incrememnt for new line
@@ -273,7 +271,7 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
     -- if there's no newline, the parser doesn't return headers correctly...
     -- ex: a,b,c
     if outResults == nil then
-        return headerField, i
+        return headerField, i-1
     end
 
     -- clean up last line if it's weird (this happens when there is a CRLF newline at end of file)
@@ -359,7 +357,9 @@ function ftcsv.parse(inputFile, delimiter, options)
     local startLine = 1
 
     -- check for BOM
-    if string.byte(inputString, 1) == 239 and string.byte(inputString, 2) == 187 and string.byte(inputString, 3) == 191 then
+    if string.byte(inputString, 1) == 239
+        and string.byte(inputString, 2) == 187
+        and string.byte(inputString, 3) == 191 then
         startLine = 4
     end
     local headerField, i = parseString(inputString, inputLength, delimiter, startLine)
