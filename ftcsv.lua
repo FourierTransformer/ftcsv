@@ -142,17 +142,16 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
 
     local assignValue
     local outResults
+    -- outResults[1] = {}
     -- the headers haven't been set yet.
     -- aka this is the first run!
     if headerField == nil then
-        -- print("this is for headers")
         headerField = {}
         assignValue = function()
             headerField[fieldNum] = field
             return true
         end
     else
-        -- print("this is for magic")
         outResults = {}
         outResults[1] = {}
         assignValue = function()
@@ -267,11 +266,17 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         assignValue()
     end
 
+    -- if there's no newline, the parser doesn't return headers correctly...
+    -- ex: a,b,c
+    if outResults == nil then
+        return headerField, i
+    end
+
     -- clean up last line if it's weird (this happens when there is a CRLF newline at end of file)
     -- doing a count gets it to pick up the oddballs
     local finalLineCount = 0
     local lastValue = nil
-    for k, v in pairs(outResults[lineNum]) do
+    for _, v in pairs(outResults[lineNum]) do
         finalLineCount = finalLineCount + 1
         lastValue = v
     end
