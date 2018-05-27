@@ -3,9 +3,7 @@
 
 ftcsv is a fast csv library written in pure Lua. It's been tested with LuaJIT 2.0/2.1 and Lua 5.1, 5.2, and 5.3
 
-It features two parsing modes, one for CSVs that can easily be loaded into memory (a few hundred MBs), and another for loading files using an iterator - useful for customized loading and manipulating large files. It correctly handles both `\n` (LF) and `\r\n` (CRLF) line endings (ie it should work with Windows and Mac/Linux line endings) and has UTF-8 support.
-
-
+It features two parsing modes, one for CSVs that can easily be loaded into memory (a few hundred MBs), and another for loading files using an iterator - useful for manipulating large files and customized loading. It correctly handles most common line endings (Windows, Linux, and OS9 line endings) and has UTF-8 support (it will correctly strip out the BOM if it exists).
 
 ## Installing
 You can either grab `ftcsv.lua` from here or install via luarocks:
@@ -21,12 +19,21 @@ There are two main parsing methods: `ftcv.parse` and `ftcsv.parseLine`.
 
 ### `ftcsv.parse(fileName, delimiter [, options])`
 
+<<<<<<< HEAD
 `ftcsv.parse` will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
 
 Just loading a csv file:
 ```lua
 local ftcsv = require("ftcsv")
 local zipcodes = ftcsv.parse("free-zipcode-database.csv", ",")
+=======
+ftcsv will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data and a lua table containing the column headers. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
+
+Just loading a csv file:
+```lua
+local ftcsv = require('ftcsv')
+local zipcodes, headers = ftcsv.parse("free-zipcode-database.csv", ",")
+>>>>>>> master
 ```
 
 ### `ftcsv.parseLine(fileName, delimiter, bufferSize [, options])`
