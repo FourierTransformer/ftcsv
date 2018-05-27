@@ -45,7 +45,6 @@ local ssub = string.sub
 if type(jit) == 'table' then
     -- finds the end of an escape sequence
     function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
-        -- local doubleQuoteEscape = doubleQuoteEscape
         local currentChar, nextChar = sbyte(inputString, i), nil
         while i <= inputLength do
             -- print(i)
@@ -72,23 +71,19 @@ if type(jit) == 'table' then
 else
     -- vanilla lua closing quote finder
     function M.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
-        local firstCharIndex = 1
-        local firstChar, iChar = nil, nil
+        local firstCharIndex
+        local firstChar, iChar
         repeat
             firstCharIndex, i = inputString:find('".?', i+1)
+            if i == nil then
+                return inputLength-1, doubleQuoteEscape
+            end
             firstChar = sbyte(inputString, firstCharIndex)
             iChar = sbyte(inputString, i)
-            -- nextChar = string.byte(inputString, i+1)
-            -- print("HI", offset, i)
-            -- print(firstChar, iChar)
             if firstChar == quote and iChar == quote then
                 doubleQuoteEscape = true
             end
         until iChar ~= quote
-        if i == nil then
-            return inputLength-1, doubleQuoteEscape
-        end
-        -- print("exiting", i-2)
         return i-2, doubleQuoteEscape
     end
 
@@ -131,7 +126,7 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
     local fieldStart = i
     local fieldNum = 1
     local lineNum = 1
-    local doubleQuoteEscape = false
+    local doubleQuoteEscape, emptyIdentified = false, false
     local exit = false
 
     --bytes
@@ -149,6 +144,7 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         headerField = {}
         assignValue = function()
             headerField[fieldNum] = field
+            emptyIdentified = false
             return true
         end
     else
@@ -156,6 +152,7 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         outResults = {}
         outResults[1] = {}
         assignValue = function()
+            emptyIdentified = false
             if not pcall(function()
                 outResults[lineNum][headerField[fieldNum]] = field
             end) then
@@ -182,9 +179,9 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
 
         -- empty string
         if currentChar == quote and nextChar == quote then
-            -- print("EMPTY STRING")
             skipChar = 1
             fieldStart = i + 2
+            emptyIdentified = true
             -- print("fs+2:", fieldStart)
 
         -- identifies the escape toggle.
@@ -193,6 +190,15 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
         elseif currentChar == quote and nextChar ~= quote and fieldStart == i then
             -- print("New Quoted Field", i)
             fieldStart = i + 1
+
+            -- if an empty field was identified before assignment, it means
+            -- that this is a quoted field that starts with escaped quotes
+            -- ex: """a"""
+            if emptyIdentified then
+                fieldStart = fieldStart - 2
+                emptyIdentified = false
+            end
+
             i, doubleQuoteEscape = M.findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
             -- print("I VALUE", i, doubleQuoteEscape)
             skipChar = 1
@@ -212,7 +218,6 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
             fieldNum = fieldNum + 1
             fieldStart = i + 1
             -- print("fs+1:", fieldStart)
-        -- end
 
         -- newline?!
         elseif (currentChar == CR or currentChar == LF) then
@@ -220,7 +225,6 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
                 -- create the new field
                 field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
 
-                -- outResults[headerField[fieldNum]][lineNum] = field
                 exit = assignValue()
                 if exit then
                     if (currentChar == CR and nextChar == LF) then

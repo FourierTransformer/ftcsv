@@ -21,6 +21,46 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle cr loading from string", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local actual = ftcsv.parse("a,b,c\rapple,banana,carrot", ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle quotes loading from string", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local actual = ftcsv.parse('"a","b","c"\n"apple","banana","carrot"', ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle doublequotes loading from string", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = '"apple"'
+		expected[1].b = '"banana"'
+		expected[1].c = '"carrot"'
+		local actual = ftcsv.parse('"a","b","c"\n"""apple""","""banana""","""carrot"""', ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle doublequotes loading from string", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = '"apple"'
+		expected[1].b = 'banana'
+		expected[1].c = '"carrot"'
+		local actual = ftcsv.parse('"a","b","c"\n"""apple""","banana","""carrot"""', ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle renaming a field", function()
 		local expected = {}
 		expected[1] = {}
