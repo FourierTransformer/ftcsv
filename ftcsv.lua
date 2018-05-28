@@ -295,6 +295,24 @@ local function parseString(inputString, inputLength, delimiter, i, headerField, 
     return outResults
 end
 
+-- determine the real headers as opposed to the header mapping
+local function determineRealHeaders(headerField, fieldsToKeep) 
+    local realHeaders = {}
+    local headerSet = {}
+    for i = 1, #headerField do
+        if not headerSet[headerField[i]] then
+            if fieldsToKeep ~= nil and fieldsToKeep[headerField[i]] then
+                table.insert(realHeaders, headerField[i])
+                headerSet[headerField[i]] = true
+            elseif fieldsToKeep == nil then
+                table.insert(realHeaders, headerField[i])
+                headerSet[headerField[i]] = true
+            end
+        end
+    end
+    return realHeaders
+end
+
 -- runs the show!
 function ftcsv.parse(inputFile, delimiter, options)
     -- delimiter MUST be one character
@@ -373,7 +391,7 @@ function ftcsv.parse(inputFile, delimiter, options)
 
     -- for files where there aren't headers!
     if header == false then
-        i = 1
+        i = startLine
         for j = 1, #headerField do
             headerField[j] = j
         end
@@ -404,7 +422,8 @@ function ftcsv.parse(inputFile, delimiter, options)
     end
 
     local output = parseString(inputString, inputLength, delimiter, i, headerField, fieldsToKeep)
-    return output, headerField
+    local realHeaders = determineRealHeaders(headerField, fieldsToKeep)
+    return output, realHeaders
 end
 
 -- a function that delimits " to "", used by the writer
