@@ -85,6 +85,8 @@ ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
 	local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", ",", options)
  	```
 
+ 	Also Note: If you apply a function to the headers via headerFunc, and want to select fields from fieldsToKeep, you need to have what the post-modified header would be in fieldsToKeep.
+
  - `headerFunc`
 
  	Applies a function to every field in the header. If you are using `rename`, the function is applied after the rename.

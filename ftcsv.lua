@@ -1,11 +1,11 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.1.4',
+    _VERSION = 'ftcsv 1.1.5',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
         The MIT License (MIT)
 
-        Copyright (c) 2016-2017 Shakil Thakur
+        Copyright (c) 2016-2018 Shakil Thakur
 
         Permission is hereby granted, free of charge, to any person obtaining a copy
         of this software and associated documentation files (the "Software"), to deal
@@ -85,7 +85,6 @@ else
         end
         return j-1, doubleQuoteEscape
     end
-
 end
 
 -- load an entire file into memory
@@ -138,7 +137,6 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
 
     local assignValue
     local outResults
-    -- outResults[1] = {}
     -- the headers haven't been set yet.
     -- aka this is the first run!
     if headerField == nil then
@@ -190,7 +188,6 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         elseif currentChar == quote and nextChar ~= quote and fieldStart == i then
             -- print("New Quoted Field", i)
             fieldStart = i + 1
-
             -- if an empty field was identified before assignment, it means
             -- that this is a quoted field that starts with escaped quotes
             -- ex: """a"""
@@ -210,7 +207,6 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
             if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
                 field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
             -- print("FIELD", field, "FIELDEND", headerField[fieldNum], lineNum)
-            -- outResults[headerField[fieldNum]][lineNum] = field
                 assignValue()
             end
             doubleQuoteEscape = false
@@ -240,6 +236,8 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
             if (currentChar == CR and nextChar == LF) then
                 -- print("CRLF DETECTED")
                 skipChar = 1
+                fieldStart = fieldStart + 1
+                -- print("fs:", fieldStart)
             end
 
             -- incrememnt for new line
@@ -290,9 +288,11 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
     -- check if outResults exists
     if outResults == nil and buffered then
         error("ftcsv: bufferSize needs to be larger to parse this file")
+    end
+
     -- if there's no newline, the parser doesn't return headers correctly...
     -- ex: a,b,c
-    else
+    if outResults == nil then
         return headerField, i-1
     end
 
@@ -412,6 +412,24 @@ local function parseOptions(delimiter, options)
 
 end
 
+-- determine the real headers as opposed to the header mapping
+local function determineRealHeaders(headerField, fieldsToKeep) 
+    local realHeaders = {}
+    local headerSet = {}
+    for i = 1, #headerField do
+        if not headerSet[headerField[i]] then
+            if fieldsToKeep ~= nil and fieldsToKeep[headerField[i]] then
+                table.insert(realHeaders, headerField[i])
+                headerSet[headerField[i]] = true
+            elseif fieldsToKeep == nil then
+                table.insert(realHeaders, headerField[i])
+                headerSet[headerField[i]] = true
+            end
+        end
+    end
+    return realHeaders
+end
+
 -- runs the show!
 function ftcsv.parse(inputFile, delimiter, options)
     -- make sure options make sense and get fields to keep
@@ -428,15 +446,28 @@ function ftcsv.parse(inputFile, delimiter, options)
     end
 
     -- parse through the headers!
-    local headerField, i = parseString(inputString, delimiter, 1)
+    local startLine = 1
+
+    -- check for BOM
+    if string.byte(inputString, 1) == 239
+        and string.byte(inputString, 2) == 187
+        and string.byte(inputString, 3) == 191 then
+        startLine = 4
+    end
+
+    -- parse through the headers!
+    local headerField, i = parseString(inputString, delimiter, startLine)
     -- reset the start if we don't have headers
-    if options.headers == false then i = 0 else i = i + 1 end
+    if options.headers == false then i = startLine else i = i + 1 end
     -- manipulate the headers as per the options
     headerField = handleHeaders(headerField, options)
 
     -- actually parse through the whole file
     local output = parseString(inputString, delimiter, i, headerField, fieldsToKeep)
-    return output, headerField
+
+    -- get the real headers and return them
+    local realHeaders = determineRealHeaders(headerField, fieldsToKeep)
+    return output, realHeaders
 end
 
 function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
