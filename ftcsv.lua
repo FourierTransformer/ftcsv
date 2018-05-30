@@ -151,9 +151,9 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         outResults[1] = {}
         assignValue = function()
             emptyIdentified = false
-            if not pcall(function()
+            if headerField[fieldNum] ~= nil then
                 outResults[lineNum][headerField[fieldNum]] = field
-            end) then
+            else
                 error('ftcsv: too many columns in row ' .. lineNum)
             end
         end
