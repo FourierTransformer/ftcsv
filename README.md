@@ -1,9 +1,13 @@
 # ftcsv
 [![Build Status](https://travis-ci.org/FourierTransformer/ftcsv.svg?branch=master)](https://travis-ci.org/FourierTransformer/ftcsv) [![Coverage Status](https://coveralls.io/repos/github/FourierTransformer/ftcsv/badge.svg?branch=master)](https://coveralls.io/github/FourierTransformer/ftcsv?branch=master)
 
-ftcsv, a fairly fast csv library written in pure Lua. It's been tested with LuaJIT 2.0/2.1 and Lua 5.1, 5.2, and 5.3
+ftcsv is a fast pure lua csv library.
 
-It works well for CSVs that can easily be fully loaded into memory (easily up to a hundred MB). Currently, there isn't a "large" file mode with proper readers and writers for ingesting CSVs in bulk with a fixed amount of memory. It correctly handles both `\n` (LF), `\r` (CR) and `\r\n` (CRLF) line endings (ie it should work with Unix, Mac OS 9, and Windows line endings), and has UTF-8 support (it will strip out BOM if it exists).
+It works well for CSVs that can easily be fully loaded into memory (easily up to a hundred MB) and correctly handles `\n` (LF), `\r` (CR) and `\r\n` (CRLF) line endings. It has UTF-8 support, and will strip out the BOM if it exists. ftcsv can also parse headerless csv-like files and supports column remapping, file or string based loading, and more!
+
+Currently, there isn't a "large" file mode with proper readers for ingesting large CSVs using a fixed amount of memory, but that is in the works in [another branch!](https://github.com/FourierTransformer/ftcsv/tree/parseLineIterator)
+
+It's been tested with LuaJIT 2.0/2.1 and Lua 5.1, 5.2, and 5.3
 
 
 
@@ -88,7 +92,7 @@ ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
 
  	In the above example, the first field becomes 'a', the second field becomes 'b' and so on.
 
-For all tested examples, take a look in /spec/feature_spec.lua
+For all tested examples, take a look in /spec/feature_spec.lua and /spec/dynamic_features_spec.lua
 
 
 ## Encoding
@@ -112,15 +116,41 @@ file:close()
 	```
 
 
+## Error Handling
+ftcsv returns a bunch of errors when passed a bad csv file or incorrect parameters. You can find a more detailed explanation of the more cryptic errors in [ERRORS.md](ERRORS.md)
+
+
+## Benchmarks
+We ran ftcsv against a few different csv parsers ([PIL](http://www.lua.org/pil/20.4.html)/[csvutils](http://lua-users.org/wiki/CsvUtils), [lua_csv](https://github.com/geoffleyland/lua-csv), and [lpeg_josh](http://lua-users.org/lists/lua-l/2009-08/msg00020.html)) for lua and here is what we found:
+
+### 20 MB file, every field is double quoted (ftcsv optimal lua case\*)
+
+| Parser    | Lua                | LuaJIT             |
+| --------- | ------------------ | ------------------ |
+| PIL/csvutils  | 3.939 +/- 0.565 SD | 1.429 +/- 0.175 SD |
+| lua_csv   | 8.487 +/- 0.156 SD | 3.095 +/- 0.206 SD |
+| lpeg_josh | **1.350 +/- 0.191 SD** | 0.826 +/- 0.176 SD |
+| ftcsv     | 3.101 +/- 0.152 SD | **0.499 +/- 0.133 SD** |
+
+\* see Performance section below for an explanation
+
+### 12 MB file, some fields are double quoted
+
+| Parser    | Lua                | LuaJIT             |
+| --------- | ------------------ | ------------------ |
+| PIL/csvutils  | 2.868 +/- 0.101 SD | 1.244 +/- 0.129 SD |
+| lua_csv   | 7.773 +/- 0.083 SD | 3.495 +/- 0.172 SD |
+| lpeg_josh | **1.146 +/- 0.191 SD** | 0.564 +/- 0.121 SD |
+| ftcsv     | 3.401 +/- 0.109 SD | **0.441 +/- 0.124 SD** |
+
+[LuaCSV](http://lua-users.org/lists/lua-l/2009-08/msg00012.html) was also tried, but usually errored out at odd places during parsing.
+
+NOTE: times are measured using `os.clock()`, so they are in CPU seconds. Each test was run 30 times in a randomized order. The file was pre-loaded, and only the csv decoding time was measured.
+
+Benchmarks were run under ftcsv 1.1.6
 
 ## Performance
-I did some basic testing and found that in lua, if you want to iterate over a string character-by-character and look for single chars, `string.byte` performs better than `string.sub`. As such, ftcsv iterates over the whole file and does byte compares to find quotes and delimiters and then generates a table from it. If you have thoughts on how to improve performance (either big picture or specifically within the code), create a GitHub issue - I'd love to hear about it!
-
-
-
-## Error Handling
-ftcsv returns a litany of errors when passed a bad csv file or incorrect parameters. You can find a more detailed explanation of the more cryptic errors in [ERRORS.md](ERRORS.md)
-
+We did some basic testing and found that in lua, if you want to iterate over a string character-by-character and look for single chars, `string.byte` performs faster than `string.sub`. This is especially true for LuaJIT. As such, in LuaJIT, ftcsv iterates over the whole file and does byte compares to find quotes and delimiters. However, for pure lua, `string.find` is used to find quotes but `string.byte` is used everywhere else as the CSV format in its proper form will have quotes around fields. If you have thoughts on how to improve performance (either big picture or specifically within the code), create a GitHub issue - I'd love to hear about it!
 
 
 ## Contributing
