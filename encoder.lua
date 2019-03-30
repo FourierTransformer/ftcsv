@@ -44,8 +44,8 @@ local function csvLineGenerator(inputTable, delimiter, headers)
 
     local arguments = {}
     arguments.t = inputTable
-    -- we shouldn't redefine delimitField for every line in
-    -- the csv, so we'll just pass it in here and reference it
+    -- we want to use the same delimitField throughout,
+    -- so we're just going to pass it in
     arguments.delimitField = delimitField
 
     return M.load(outputFunc), arguments, 0
