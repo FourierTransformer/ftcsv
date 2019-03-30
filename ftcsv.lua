@@ -1,5 +1,5 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.1.5',
+    _VERSION = 'ftcsv 1.2.0',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
@@ -24,16 +24,12 @@ local ftcsv = {
         LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
         OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
         SOFTWARE.
-    ]]
+    ]],
+    encode = require("encoder")
 }
 
--- lua 5.1 load compat
+-- luajit/lua compatability layer
 local M = {}
-if type(jit) == 'table' or _ENV then
-    M.load = _G.load
-else
-    M.load = loadstring
-end
 
 -- perf
 local sbyte = string.byte
@@ -539,99 +535,6 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
             return parsedBuffer[parsedBufferIndex]
         end
     end
-end
-
--- a function that delimits " to "", used by the writer
-local function delimitField(field)
-    field = tostring(field)
-    if field:find('"') then
-        return field:gsub('"', '""')
-    else
-        return field
-    end
-end
-
--- a function that compiles some lua code to quickly print out the csv
-local function writer(inputTable, dilimeter, headers)
-    -- they get re-created here if they need to be escaped so lua understands it based on how
-    -- they came in
-    for i = 1, #headers do
-        if inputTable[1][headers[i]] == nil then
-            error("ftcsv: the field '" .. headers[i] .. "' doesn't exist in the inputTable")
-        end
-        if headers[i]:find('"') then
-            headers[i] = headers[i]:gsub('"', '\\"')
-        end
-    end
-
-    local outputFunc = [[
-        local state, i = ...
-        local d = state.delimitField
-        i = i + 1;
-        if i > state.tableSize then return nil end;
-        return i, '"' .. d(state.t[i]["]] .. table.concat(headers, [["]) .. '"]] .. dilimeter .. [["' .. d(state.t[i]["]]) .. [["]) .. '"\r\n']]
-
-    -- print(outputFunc)
-
-    local state = {}
-    state.t = inputTable
-    state.tableSize = #inputTable
-    state.delimitField = delimitField
-
-    return M.load(outputFunc), state, 0
-
-end
-
--- takes the values from the headers in the first row of the input table
-local function extractHeaders(inputTable)
-    local headers = {}
-    for key, _ in pairs(inputTable[1]) do
-        headers[#headers+1] = key
-    end
-
-    -- lets make the headers alphabetical
-    table.sort(headers)
-
-    return headers
-end
-
--- turns a lua table into a csv
--- works really quickly with luajit-2.1, because table.concat life
-function ftcsv.encode(inputTable, delimiter, options)
-    local output = {}
-
-    -- dilimeter MUST be one character
-    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
-
-    -- grab the headers from the options if they are there
-    local headers = nil
-    if options then
-        if options.fieldsToKeep ~= nil then
-            assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
-            headers = options.fieldsToKeep
-        end
-    end
-    if headers == nil then
-        headers = extractHeaders(inputTable)
-    end
-
-    -- newHeaders are needed if there are quotes within the header
-    -- because they need to be escaped
-    local newHeaders = {}
-    for i = 1, #headers do
-        if headers[i]:find('"') then
-            newHeaders[i] = headers[i]:gsub('"', '""')
-        else
-            newHeaders[i] = headers[i]
-        end
-    end
-    output[1] = '"' .. table.concat(newHeaders, '"' .. delimiter .. '"') .. '"\r\n'
-
-    -- add each line by line.
-    for i, line in writer(inputTable, delimiter, headers) do
-        output[i+1] = line
-    end
-    return table.concat(output)
 end
 
 return ftcsv
