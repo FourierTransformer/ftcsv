@@ -1,11 +1,12 @@
 -- CSV Encoder for ftcsv
 
--- lua/luajit load compat
-local M = {}
+local luaCompatibility = {}
 if type(jit) == 'table' or _ENV then
-    M.load = _G.load
+    -- luajit and lua 5.2+
+    luaCompatibility.load = _G.load
 else
-    M.load = loadstring
+    -- lua 5.1
+    luaCompatibility.load = loadstring
 end
 
 local function delimitField(field)
@@ -48,7 +49,7 @@ local function csvLineGenerator(inputTable, delimiter, headers)
     -- so we're just going to pass it in
     arguments.delimitField = delimitField
 
-    return M.load(outputFunc), arguments, 0
+    return luaCompatibility.load(outputFunc), arguments, 0
 
 end
 
@@ -90,7 +91,8 @@ local function getHeadersFromOptions(options)
     local headers = nil
     if options then
         if options.fieldsToKeep ~= nil then
-            assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
+            assert(
+                type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
             headers = options.fieldsToKeep
         end
     end
