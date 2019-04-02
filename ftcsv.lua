@@ -137,10 +137,10 @@ local function determineTotalColumnCount(headerField, fieldsToKeep)
 end
 
 -- main function used to parse
-local function parseString(inputString, delimiter, i, headerField, fieldsToKeep, buffered)
+local function parseString(inputString, delimiter, i, headerField, fieldsToKeep, inputLength, buffered)
 
     -- keep track of my chars!
-    local inputLength = #inputString
+    local inputLength = inputLength or #inputString
     local currentChar, nextChar = sbyte(inputString, i), nil
     local skipChar = 0
     local field
@@ -149,10 +149,9 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
     local lineNum = 1
     local lineStart = i
     local doubleQuoteEscape, emptyIdentified = false, false
-    local exit = false
 
     local skipIndex
-    local charPatterToSkip = "[" .. delimiter .. "\r\n]"
+    local charPatternToSkip = "[" .. delimiter .. "\r\n]"
 
 
     --bytes
@@ -163,20 +162,17 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
 
 
     local assignValue
-    local outResults
+    local outResults = {{}}
     -- the headers haven't been set yet.
     -- aka this is the first run!
     if headerField == nil then
         headerField = {}
         assignValue = function()
-            headerField[fieldNum] = field
+            outResults[lineNum][fieldNum] = field
             doubleQuoteEscape = false
             emptyIdentified = false
-            return true
         end
     else
-        outResults = {}
-        outResults[1] = {}
         assignValue = function()
             doubleQuoteEscape = false
             emptyIdentified = false
@@ -191,6 +187,16 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
     -- totalColumnCount based on unique headers and fieldsToKeep
     local totalColumnCount = determineTotalColumnCount(headerField, fieldsToKeep)
 
+    local function assignValueToField()
+        -- create the new field
+        -- print(headerField[fieldNum])
+        if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
+            field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
+        -- print("FIELD", field, "FIELDEND", headerField[fieldNum], lineNum)
+            return assignValue()
+        end
+    end
+
     while i <= inputLength do
         -- go by two chars at a time! currentChar is set at the bottom.
         -- currentChar = string.byte(inputString, i)
@@ -199,6 +205,7 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
 
         -- empty string
         if currentChar == quote and nextChar == quote then
+            -- handleEmptyString
             skipChar = 1
             fieldStart = i + 2
             emptyIdentified = true
@@ -208,6 +215,7 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         -- This can only happen if fields have quotes around them
         -- so the current "start" has to be where a quote character is.
         elseif currentChar == quote and nextChar ~= quote and fieldStart == i then
+            -- handleEscapeToggle
             -- print("New Quoted Field", i)
             fieldStart = i + 1
             -- if an empty field was identified before assignment, it means
@@ -217,42 +225,23 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
                 fieldStart = fieldStart - 2
                 emptyIdentified = false
             end
-
-            i, doubleQuoteEscape = luaCompatibility.findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
-            -- print("I VALUE", i, doubleQuoteEscape)
             skipChar = 1
+            i, doubleQuoteEscape = luaCompatibility.findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
 
         -- create some fields if we can!
         elseif currentChar == delimiterByte then
-            -- create the new field
-            -- print(headerField[fieldNum])
-            if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
-                field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
-            -- print("FIELD", field, "FIELDEND", headerField[fieldNum], lineNum)
-                assignValue()
-            end
+            assignValueToField()
 
+            -- increaseFieldIndices
             fieldNum = fieldNum + 1
             fieldStart = i + 1
             -- print("fs+1:", fieldStart)
 
         -- newline?!
         elseif (currentChar == LF or currentChar == CR) then
-            if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
-                -- create the new field
-                field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
+            assignValueToField()
 
-                -- used to exit for the headers...
-                exit = assignValue()
-                if exit then
-                    if (currentChar == CR and nextChar == LF) then
-                        return headerField, i + 1
-                    else
-                        return headerField, i
-                    end
-                end
-            end
-
+            -- handleCRLF
             -- determine how line ends
             if (currentChar == CR and nextChar == LF) then
                 -- print("CRLF DETECTED")
@@ -285,7 +274,7 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
             end
 
         elseif luaCompatibility.LuaJIT == false then
-            skipIndex = inputString:find(charPatterToSkip, i)
+            skipIndex = inputString:find(charPatternToSkip, i)
             if skipIndex then
                 skipChar = skipChar + (skipIndex - i - 1)
             end
@@ -296,6 +285,8 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
             outResults[lineNum] = nil
             return outResults, lineStart
         end
+
+        -- incrementCounter
         i = i + 1 + skipChar
         if (skipChar > 0) then
             currentChar = sbyte(inputString, i)
@@ -303,25 +294,18 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
             currentChar = nextChar
         end
         skipChar = 0
-    end
+        end
 
     -- create last new field
-    if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
-        field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
-        assignValue()
-    end
+    assignValueToField()
 
     -- check if outResults exists
+    -- TODO: better buffer handling
     if outResults == nil and buffered then
         error("ftcsv: bufferSize needs to be larger to parse this file")
     end
 
-    -- if there's no newline, the parser doesn't return headers correctly...
-    -- ex: a,b,c
-    if outResults == nil then
-        return headerField, i-1
-    end
-
+    -- cleanLastFieldIfEmpty
     -- TODO: look into buffered here, as there's likely an edge case here.
     if fieldNum < totalColumnCount then
         -- indicates last field was really just a CRLF,
@@ -329,6 +313,7 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         if fieldNum == 1 and field == "" then
             outResults[lineNum] = nil
         else
+            -- TODO: look into buffered... this is basically a side effect right now
             if buffered then
                 outResults[lineNum] = nil
                 -- print(#outResults)
@@ -386,17 +371,43 @@ local function handleHeaders(headerField, options)
     return headerField
 end
 
+local function findNewlineWhenNotQuoted(str)
+    local i = 1
+    local quote = sbyte('"')
+    local newlines = {
+        [sbyte("\n")] = true,
+        [sbyte("\r")] = true
+    }
+    local quoted = false
+    local char = sbyte(str, i)
+    local oldchar
+    repeat
+        -- this should still work for escaped quotes
+        -- ex: " a "" b \r\n " -- there is always a pair around the newline
+        if char == quote then
+            quoted = not quoted
+        end
+        i = i + 1
+        oldchar = char
+        char = sbyte(str, i)
+    until (newlines[char] and not quoted) or char == nil
+    if oldchar == sbyte("\r") and char == sbyte("\n") then
+        i = i + 1
+    end
+    return i
+end
+
 local function includesBOM(inputString)
-    return string.byte(inputString, 1) == 239
-        and string.byte(inputString, 2) == 187
-        and string.byte(inputString, 3) == 191
+    return sbyte(inputString, 1) == 239
+        and sbyte(inputString, 2) == 187
+        and sbyte(inputString, 3) == 191
 end
 
 -- load an entire file into memory
-local function loadFile(textFile)
+local function loadFile(textFile, amount)
     local file = io.open(textFile, "r")
     if not file then error("ftcsv: File not found at " .. textFile) end
-    local allLines = file:read("*all")
+    local allLines = file:read(amount)
     file:close()
     return allLines
 end
@@ -405,7 +416,7 @@ local function initializeInputFromStringOrFile(inputFile, options)
     -- handle input via string or file!
     local inputString
     if options.loadFromString then inputString = inputFile
-    else inputString = loadFile(inputFile) end
+    else inputString = loadFile(inputFile, "*all") end
 
     -- if they sent in an empty file...
     if inputString == "" then
@@ -472,17 +483,20 @@ function ftcsv.parse(inputFile, delimiter, options)
     end
 
     -- parse through the headers!
-    local headerField, i = parseString(inputString, delimiter, startLine)
+    local endOfHeaderRow = findNewlineWhenNotQuoted(inputString)
+    local rawHeaders, i = parseString(inputString, delimiter, startLine, nil, nil, endOfHeaderRow)
+
     -- reset the start if we don't have headers
-    if options.headers == false then i = startLine else i = i + 1 end
+    if options.headers == false then i = startLine end
+
     -- manipulate the headers as per the options
-    headerField = handleHeaders(headerField, options)
+    local modifiedHeaders = handleHeaders(rawHeaders[1], options)
 
     -- actually parse through the whole file
-    local output = parseString(inputString, delimiter, i, headerField, fieldsToKeep)
+    local output = parseString(inputString, delimiter, i, modifiedHeaders, fieldsToKeep)
 
     -- get the real headers and return them
-    local realHeaders = determineRealHeaders(headerField, fieldsToKeep)
+    local realHeaders = determineRealHeaders(modifiedHeaders, fieldsToKeep)
     return output, realHeaders
 end
 
@@ -496,9 +510,7 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
     end
 
     -- load it up!
-    local file = io.open(inputFile, "r")
-    if not file then error("ftcsv: File not found at " .. inputFile) end
-    local inputString = file:read(bufferSize)
+    local inputString = loadFile(inputFile, bufferSize)
     -- if they sent in an empty file...
     if inputString == "" then
         error('ftcsv: Cannot parse an empty file')
