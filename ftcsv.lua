@@ -62,7 +62,6 @@ if type(jit) == 'table' then
     function luaCompatibility.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
         local currentChar, nextChar = sbyte(inputString, i), nil
         while i <= inputLength do
-            -- print(i)
             nextChar = sbyte(inputString, i+1)
 
             -- this one deals with " double quotes that are escaped "" within single quotes "
@@ -74,7 +73,6 @@ if type(jit) == 'table' then
 
             -- identifies the escape toggle
             elseif currentChar == quote and nextChar ~= quote then
-                -- print("exiting", i-1)
                 return i-1, doubleQuoteEscape
             else
                 i = i + 1
@@ -85,6 +83,7 @@ if type(jit) == 'table' then
 
 else
     luaCompatibility.LuaJIT = false
+
     -- vanilla lua closing quote finder
     function luaCompatibility.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
         local j, difference
@@ -94,7 +93,6 @@ else
             return inputLength-1, doubleQuoteEscape
         end
         difference = j - i
-        -- print("difference", difference, "I", i, "J", j)
         if difference >= 1 then doubleQuoteEscape = true end
         if difference == 1 then
             return luaCompatibility.findClosingQuote(j+1, inputLength, inputString, quote, doubleQuoteEscape)
@@ -108,14 +106,11 @@ local function createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
     local field
     -- so, if we just recently de-escaped, we don't want the trailing "
     if sbyte(inputString, i-1) == quote then
-        -- print("Skipping last \"")
         field = ssub(inputString, fieldStart, i-2)
     else
         field = ssub(inputString, fieldStart, i-1)
     end
     if doubleQuoteEscape then
-        -- print("QUOTE REPLACE")
-        -- print(line[fieldNum])
         field = field:gsub('""', '"')
     end
     return field
@@ -160,20 +155,22 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
     local quote = sbyte('"')
     local delimiterByte = sbyte(delimiter)
 
-
-    local assignValue
     local outResults = {{}}
     -- the headers haven't been set yet.
     -- aka this is the first run!
     if headerField == nil then
         headerField = {}
-        assignValue = function()
-            outResults[lineNum][fieldNum] = field
-            doubleQuoteEscape = false
-            emptyIdentified = false
-        end
-    else
-        assignValue = function()
+        local headerMeta = {__index = function(_, key) return key end}
+        setmetatable(headerField, headerMeta)
+    end
+
+    -- totalColumnCount based on unique headers and fieldsToKeep
+    local totalColumnCount = determineTotalColumnCount(headerField, fieldsToKeep)
+
+    local function assignValueToField()
+        -- create the new field
+        if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
+            field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
             doubleQuoteEscape = false
             emptyIdentified = false
             if headerField[fieldNum] ~= nil then
@@ -184,39 +181,21 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         end
     end
 
-    -- totalColumnCount based on unique headers and fieldsToKeep
-    local totalColumnCount = determineTotalColumnCount(headerField, fieldsToKeep)
-
-    local function assignValueToField()
-        -- create the new field
-        -- print(headerField[fieldNum])
-        if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
-            field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
-        -- print("FIELD", field, "FIELDEND", headerField[fieldNum], lineNum)
-            return assignValue()
-        end
-    end
-
     while i <= inputLength do
-        -- go by two chars at a time! currentChar is set at the bottom.
-        -- currentChar = string.byte(inputString, i)
+        -- go by two chars at a time,
+        --  currentChar is set at the bottom.
         nextChar = sbyte(inputString, i+1)
-        -- print(i, string.char(currentChar), string.char(nextChar))
 
         -- empty string
         if currentChar == quote and nextChar == quote then
-            -- handleEmptyString
             skipChar = 1
             fieldStart = i + 2
             emptyIdentified = true
-            -- print("fs+2:", fieldStart)
 
-        -- identifies the escape toggle.
+        -- escape toggle.
         -- This can only happen if fields have quotes around them
         -- so the current "start" has to be where a quote character is.
         elseif currentChar == quote and nextChar ~= quote and fieldStart == i then
-            -- handleEscapeToggle
-            -- print("New Quoted Field", i)
             fieldStart = i + 1
             -- if an empty field was identified before assignment, it means
             -- that this is a quoted field that starts with escaped quotes
@@ -228,26 +207,22 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
             skipChar = 1
             i, doubleQuoteEscape = luaCompatibility.findClosingQuote(i+1, inputLength, inputString, quote, doubleQuoteEscape)
 
-        -- create some fields if we can!
+        -- create some fields
         elseif currentChar == delimiterByte then
             assignValueToField()
 
             -- increaseFieldIndices
             fieldNum = fieldNum + 1
             fieldStart = i + 1
-            -- print("fs+1:", fieldStart)
 
-        -- newline?!
+        -- newline
         elseif (currentChar == LF or currentChar == CR) then
             assignValueToField()
 
-            -- handleCRLF
-            -- determine how line ends
+            -- handle CRLF
             if (currentChar == CR and nextChar == LF) then
-                -- print("CRLF DETECTED")
                 skipChar = 1
                 fieldStart = fieldStart + 1
-                -- print("fs:", fieldStart)
             end
 
             -- incrememnt for new line
@@ -255,10 +230,6 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
                 -- sometimes in buffered mode, the buffer starts with a newline
                 -- this skips the newline and lets the parsing continue.
                 if lineNum == 1 and fieldNum == 1 and buffered then
-                    -- print("fieldNum", fieldNum)
-                    -- print("totalColumnCount", totalColumnCount)
-                    -- print("lineNum", lineNum)
-                    -- print(i)
                     fieldStart = i + 1 + skipChar
                     lineStart = fieldStart
                 else
@@ -270,7 +241,6 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
                 fieldNum = 1
                 fieldStart = i + 1 + skipChar
                 lineStart = fieldStart
-                -- print("fs:", fieldStart)
             end
 
         elseif luaCompatibility.LuaJIT == false then
@@ -280,7 +250,9 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
             end
 
         end
-        -- this happens when you can't find a closing quote - usually means in the middle of a buffer
+
+        -- in buffered mode and it can't find the closing quote
+        -- it usually means in the middle of a buffer and need to backtrack
         if i == nil and buffered then
             outResults[lineNum] = nil
             return outResults, lineStart
@@ -305,18 +277,19 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         error("ftcsv: bufferSize needs to be larger to parse this file")
     end
 
-    -- cleanLastFieldIfEmpty
+    -- remove last field if empty
     -- TODO: look into buffered here, as there's likely an edge case here.
     if fieldNum < totalColumnCount then
+
         -- indicates last field was really just a CRLF,
         -- so, it can be removed
         if fieldNum == 1 and field == "" then
             outResults[lineNum] = nil
         else
+
             -- TODO: look into buffered... this is basically a side effect right now
             if buffered then
                 outResults[lineNum] = nil
-                -- print(#outResults)
                 return outResults, lineStart
             else
                 error('ftcsv: too few columns in row ' .. lineNum)
@@ -324,8 +297,6 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         end
     end
 
-    -- print("Made it to the end?")
-    -- print("i", i, "inputLength", inputLength)
     return outResults, i
 end
 
@@ -349,7 +320,6 @@ local function handleHeaders(headerField, options)
         -- basic rename (["a" = "apple"])
         for j = 1, #headerField do
             if options.rename[headerField[j]] then
-                -- print("RENAMING", headerField[j], options.rename[headerField[j]])
                 headerField[j] = options.rename[headerField[j]]
             end
         end
