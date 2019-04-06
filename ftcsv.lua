@@ -233,6 +233,11 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
                     fieldStart = i + 1 + skipChar
                     lineStart = fieldStart
                 else
+                    print("field", field)
+                    print("fieldNum", fieldNum)
+                    print("totalColumnCount", totalColumnCount)
+                    print("lineNum", lineNum)
+                    print("buffered", buffered)
                     error('ftcsv: too few columns in row ' .. lineNum)
                 end
             else
@@ -377,16 +382,21 @@ end
 local function loadFile(textFile, amount)
     local file = io.open(textFile, "r")
     if not file then error("ftcsv: File not found at " .. textFile) end
-    local allLines = file:read(amount)
-    file:close()
-    return allLines
+    local lines = file:read(amount)
+    if amount == "*all" then
+        file:close()
+    end
+    return lines, file
 end
 
 local function initializeInputFromStringOrFile(inputFile, options)
     -- handle input via string or file!
     local inputString
-    if options.loadFromString then inputString = inputFile
-    else inputString = loadFile(inputFile, "*all") end
+    if options.loadFromString then
+        inputString = inputFile
+    else
+        inputString = loadFile(inputFile, "*all")
+    end
 
     -- if they sent in an empty file...
     if inputString == "" then
@@ -480,22 +490,29 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
     end
 
     -- load it up!
-    local inputString = loadFile(inputFile, bufferSize)
+    local inputString, file = loadFile(inputFile, bufferSize)
     -- if they sent in an empty file...
     if inputString == "" then
         error('ftcsv: Cannot parse an empty file')
     end
 
+    -- determine start of input
+    local startLine = 1
+    if includesBOM(inputString) then
+        startLine = 4
+    end
+
     -- parse through the headers!
-    local headerField, i = parseString(inputString, delimiter, 1, nil, nil, true)
+    local endOfHeaderRow = findNewlineWhenNotQuoted(inputString)
+    local rawHeaders, i = parseString(inputString, delimiter, startLine, nil, nil, endOfHeaderRow, true)
     -- reset the start if we don't have headers
-    if options.headers == false then i = 0 else i = i + 1 end
+    if options.headers == false then i = startLine end
     -- manipulate the headers as per the options
-    headerField = handleHeaders(headerField, options)
+    local modifiedHeaders = handleHeaders(rawHeaders[1], options)
     -- no longer needed!
     options = nil
 
-    local parsedBuffer, startLine = parseString(inputString, delimiter, i, headerField, fieldsToKeep, true)
+    local parsedBuffer, startLine = parseString(inputString, delimiter, i, modifiedHeaders, fieldsToKeep, nil, true)
     inputString = string.sub(inputString, startLine)
     local parsedBufferIndex = 0
 
@@ -523,7 +540,7 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
             -- print("input string", #inputString, inputString)
 
             -- re-analyze and load buffer
-            parsedBuffer, startLine = parseString(inputString, delimiter, 1, headerField, fieldsToKeep, true)
+            parsedBuffer, startLine = parseString(inputString, delimiter, 1, modifiedHeaders, fieldsToKeep, nil, true)
             parsedBufferIndex = 1
 
             -- cut the input string down
