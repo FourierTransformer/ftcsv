@@ -101,21 +101,6 @@ else
     end
 end
 
--- creates a new field
-local function createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
-    local field
-    -- so, if we just recently de-escaped, we don't want the trailing "
-    if sbyte(inputString, i-1) == quote then
-        field = ssub(inputString, fieldStart, i-2)
-    else
-        field = ssub(inputString, fieldStart, i-1)
-    end
-    if doubleQuoteEscape then
-        field = field:gsub('""', '"')
-    end
-    return field
-end
-
 local function determineTotalColumnCount(headerField, fieldsToKeep)
     local totalColumnCount = 0
     local headerFieldSet = {}
@@ -131,11 +116,23 @@ local function determineTotalColumnCount(headerField, fieldsToKeep)
     return totalColumnCount
 end
 
+local function createOutputMetaTable(finalHeaders)
+    local rawSetup = "local t, k, _ = ... \
+    rawset(t, k, {[ [[%s]] ]=true})"
+    rawSetup = rawSetup:format(table.concat(finalHeaders, "]] ]=true, [ [["))
+
+    if _ENV then
+        return _G.load(rawSetup)
+    else
+        return loadstring(rawSetup)
+    end
+end
+
 -- main function used to parse
-local function parseString(inputString, delimiter, i, headerField, fieldsToKeep, inputLength, buffered)
+local function parseString(inputString, i, options)
 
     -- keep track of my chars!
-    local inputLength = inputLength or #inputString
+    local inputLength = options.inputLength or #inputString
     local currentChar, nextChar = sbyte(inputString, i), nil
     local skipChar = 0
     local field
@@ -146,33 +143,57 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
     local doubleQuoteEscape, emptyIdentified = false, false
 
     local skipIndex
-    local charPatternToSkip = "[" .. delimiter .. "\r\n]"
-
+    local charPatternToSkip = "[" .. options.delimiter .. "\r\n]"
 
     --bytes
     local CR = sbyte("\r")
     local LF = sbyte("\n")
     local quote = sbyte('"')
-    local delimiterByte = sbyte(delimiter)
+    local delimiterByte = sbyte(options.delimiter)
 
-    local outResults = {{}}
-    -- the headers haven't been set yet.
-    -- aka this is the first run!
+    -- explode most used options
+    local fieldsToKeep = options.fieldsToKeep
+    local headerField = options.headerField
+    local buffered = options.buffered
+    local ignoreQuotes = options.ignoreQuotes
+    local outputMetaTable = options.outputMetaTable
+
+    local outResults = {}
+
+    -- in the first run, the headers haven't been set yet.
     if headerField == nil then
         headerField = {}
+        -- setup a metatable to simply return the key that's passed in
         local headerMeta = {__index = function(_, key) return key end}
         setmetatable(headerField, headerMeta)
     end
 
+    if outputMetaTable then
+        setmetatable(outResults, {__newindex = outputMetaTable})
+    end
+    outResults[1] = {}
+
     -- totalColumnCount based on unique headers and fieldsToKeep
-    local totalColumnCount = determineTotalColumnCount(headerField, fieldsToKeep)
+    local totalColumnCount = options.totalColumnCount or determineTotalColumnCount(headerField, fieldsToKeep)
 
     local function assignValueToField()
-        -- create the new field
         if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
-            field = createField(inputString, quote, fieldStart, i, doubleQuoteEscape)
+
+            -- create new field
+            if sbyte(inputString, i-1) == quote then
+                field = ssub(inputString, fieldStart, i-2)
+            else
+                field = ssub(inputString, fieldStart, i-1)
+            end
+            if doubleQuoteEscape then
+                field = field:gsub('""', '"')
+            end
+
+            -- reset flags
             doubleQuoteEscape = false
             emptyIdentified = false
+
+            -- assign field in output
             if headerField[fieldNum] ~= nil then
                 outResults[lineNum][headerField[fieldNum]] = field
             else
@@ -187,7 +208,7 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         nextChar = sbyte(inputString, i+1)
 
         -- empty string
-        if currentChar == quote and nextChar == quote then
+        if ignoreQuotes == false and currentChar == quote and nextChar == quote then
             skipChar = 1
             fieldStart = i + 2
             emptyIdentified = true
@@ -195,7 +216,7 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         -- escape toggle.
         -- This can only happen if fields have quotes around them
         -- so the current "start" has to be where a quote character is.
-        elseif currentChar == quote and nextChar ~= quote and fieldStart == i then
+        elseif ignoreQuotes == false and currentChar == quote and nextChar ~= quote and fieldStart == i then
             fieldStart = i + 1
             -- if an empty field was identified before assignment, it means
             -- that this is a quoted field that starts with escaped quotes
@@ -233,11 +254,6 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
                     fieldStart = i + 1 + skipChar
                     lineStart = fieldStart
                 else
-                    print("field", field)
-                    print("fieldNum", fieldNum)
-                    print("totalColumnCount", totalColumnCount)
-                    print("lineNum", lineNum)
-                    print("buffered", buffered)
                     error('ftcsv: too few columns in row ' .. lineNum)
                 end
             else
@@ -251,7 +267,7 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         elseif luaCompatibility.LuaJIT == false then
             skipIndex = inputString:find(charPatternToSkip, i)
             if skipIndex then
-                skipChar = skipChar + (skipIndex - i - 1)
+                skipChar = skipIndex - i - 1
             end
 
         end
@@ -263,7 +279,7 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
             return outResults, lineStart
         end
 
-        -- incrementCounter
+        -- Increment Counter
         i = i + 1 + skipChar
         if (skipChar > 0) then
             currentChar = sbyte(inputString, i)
@@ -302,7 +318,7 @@ local function parseString(inputString, delimiter, i, headerField, fieldsToKeep,
         end
     end
 
-    return outResults, i
+    return outResults, i, totalColumnCount
 end
 
 local function handleHeaders(headerField, options)
@@ -409,7 +425,6 @@ local function parseOptions(delimiter, options)
     -- delimiter MUST be one character
     assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
 
-    -- OPTIONS yo
     local fieldsToKeep = nil
 
     if options then
@@ -438,10 +453,16 @@ local function parseOptions(delimiter, options)
         if options.headerFunc ~= nil then
             assert(type(options.headerFunc) == "function", "ftcsv only takes a function value for optional parameter 'headerFunc'. You passed in '" .. tostring(options.headerFunc) .. "' of type '" .. type(options.headerFunc) .. "'.")
         end
+        if options.ignoreQuotes == nil then
+            options.ignoreQuotes = false
+        else
+            assert(type(options.loadFromString) == "boolean", "ftcsv only takes a boolean value for optional parameter 'ignoreQuotes'. You passed in '" .. tostring(options.ignoreQuotes) .. "' of type '" .. type(options.ignoreQuotes) .. "'.")
+        end
     else
         options = {
             ["headers"] = true,
-            ["loadFromString"] = false
+            ["loadFromString"] = false,
+            ["ignoreQuotes"] = false
         }
     end
 
@@ -464,19 +485,36 @@ function ftcsv.parse(inputFile, delimiter, options)
 
     -- parse through the headers!
     local endOfHeaderRow = findNewlineWhenNotQuoted(inputString)
-    local rawHeaders, i = parseString(inputString, delimiter, startLine, nil, nil, endOfHeaderRow)
 
-    -- reset the start if we don't have headers
-    if options.headers == false then i = startLine end
+    -- set options
+    local parserArgs = {
+        delimiter = delimiter,
+        headerField = nil,
+        fieldsToKeep = nil,
+        inputLength = endOfHeaderRow,
+        buffered = false,
+        ignoreQuotes = options.ignoreQuotes
+    }
+
+    local rawHeaders, endOfHeaders = parseString(inputString, startLine, parserArgs)
 
     -- manipulate the headers as per the options
     local modifiedHeaders = handleHeaders(rawHeaders[1], options)
+    parserArgs.headerField = modifiedHeaders
+    parserArgs.fieldsToKeep = fieldsToKeep
+    parserArgs.inputLength = nil
+
+    if options.headers == false then endOfHeaders = startLine end
+
+    local realHeaders = determineRealHeaders(modifiedHeaders, fieldsToKeep)
+    if options.headers ~= false then
+        local outputMetaTable = createOutputMetaTable(realHeaders)
+        parserArgs.outputMetaTable = outputMetaTable
+    end
 
     -- actually parse through the whole file
-    local output = parseString(inputString, delimiter, i, modifiedHeaders, fieldsToKeep)
+    local output = parseString(inputString, endOfHeaders, parserArgs)
 
-    -- get the real headers and return them
-    local realHeaders = determineRealHeaders(modifiedHeaders, fieldsToKeep)
     return output, realHeaders
 end
 
@@ -504,16 +542,32 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
 
     -- parse through the headers!
     local endOfHeaderRow = findNewlineWhenNotQuoted(inputString)
-    local rawHeaders, i = parseString(inputString, delimiter, startLine, nil, nil, endOfHeaderRow, true)
+
+    -- set options
+    local parserArgs = {
+        delimiter = delimiter,
+        headerField = nil,
+        fieldsToKeep = nil,
+        inputLength = endOfHeaderRow,
+        buffered = true,
+        ignoreQuotes = options.ignoreQuotes
+    }
+    local rawHeaders, i = parseString(inputString, startLine, parserArgs)
+
     -- reset the start if we don't have headers
     if options.headers == false then i = startLine end
+
     -- manipulate the headers as per the options
     local modifiedHeaders = handleHeaders(rawHeaders[1], options)
-    -- no longer needed!
-    options = nil
+    parserArgs.headerField = modifiedHeaders
+    parserArgs.fieldsToKeep = fieldsToKeep
+    parserArgs.inputLength = nil
+    -- parserArgs.ignoreQuotes = true
 
-    local parsedBuffer, startLine = parseString(inputString, delimiter, i, modifiedHeaders, fieldsToKeep, nil, true)
-    inputString = string.sub(inputString, startLine)
+    local parsedBuffer, startLine, totalColumnCount = parseString(inputString, i, parserArgs)
+    parserArgs.totalColumnCount = totalColumnCount
+
+    inputString = ssub(inputString, startLine)
     local parsedBufferIndex = 0
 
     return function()
@@ -526,33 +580,33 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
         if out then
             -- print("returning things")
             return out
-        else
-            -- reads more of the input
-            local newInput = file:read(bufferSize)
-            if not newInput then
-                -- print("closing file")
-                file:close()
-                return
-            end
-
-            -- appends the new input to what was left over
-            inputString = inputString .. newInput
-            -- print("input string", #inputString, inputString)
-
-            -- re-analyze and load buffer
-            parsedBuffer, startLine = parseString(inputString, delimiter, 1, modifiedHeaders, fieldsToKeep, nil, true)
-            parsedBufferIndex = 1
-
-            -- cut the input string down
-            -- print("startLine", startLine)
-            inputString = string.sub(inputString, startLine)
-
-            -- print("parsedBufferSize", #parsedBuffer)
-            if #parsedBuffer == 0 then
-                error("ftcsv: bufferSize needs to be larger to parse this file")
-            end
-            return parsedBuffer[parsedBufferIndex]
         end
+
+        -- reads more of the input
+        local newInput = file:read(bufferSize)
+        if not newInput then
+            -- print("closing file")
+            file:close()
+            return nil
+        end
+
+        -- appends the new input to what was left over
+        inputString = inputString .. newInput
+        -- print("input string", #inputString, inputString)
+
+        -- re-analyze and load buffer
+        parsedBuffer, startLine = parseString(inputString, 1, parserArgs)
+        parsedBufferIndex = 1
+
+        -- cut the input string down
+        -- print("startLine", startLine)
+        inputString = ssub(inputString, startLine)
+
+        -- print("parsedBufferSize", #parsedBuffer)
+        if #parsedBuffer == 0 then
+            error("ftcsv: bufferSize needs to be larger to parse this file")
+        end
+        return parsedBuffer[parsedBufferIndex]
     end
 end
 
