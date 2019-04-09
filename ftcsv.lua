@@ -197,7 +197,7 @@ local function parseString(inputString, i, options)
             if headerField[fieldNum] ~= nil then
                 outResults[lineNum][headerField[fieldNum]] = field
             else
-                error('ftcsv: too many columns in row ' .. lineNum)
+                error('ftcsv: too many columns in row ' .. options.rowOffset + lineNum)
             end
         end
     end
@@ -254,7 +254,7 @@ local function parseString(inputString, i, options)
                     fieldStart = i + 1 + skipChar
                     lineStart = fieldStart
                 else
-                    error('ftcsv: too few columns in row ' .. lineNum)
+                    error('ftcsv: too few columns in row ' .. options.rowOffset + lineNum)
                 end
             else
                 lineNum = lineNum + 1
@@ -313,7 +313,7 @@ local function parseString(inputString, i, options)
                 outResults[lineNum] = nil
                 return outResults, lineStart
             else
-                error('ftcsv: too few columns in row ' .. lineNum)
+                error('ftcsv: too few columns in row ' .. options.rowOffset + lineNum)
             end
         end
     end
@@ -485,7 +485,8 @@ local function parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsT
         fieldsToKeep = nil,
         inputLength = endOfHeaderRow,
         buffered = false,
-        ignoreQuotes = options.ignoreQuotes
+        ignoreQuotes = options.ignoreQuotes,
+        rowOffset = 0
     }
 
     local rawHeaders, endOfHeaders = parseString(inputString, startLine, parserArgs)
@@ -531,16 +532,16 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
     -- make sure options make sense and get fields to keep
     local options, fieldsToKeep = parseOptions(delimiter, options)
 
-    local inputString, file = initializeInputFromStringOrFile(inputFile, options, bufferSize)
+    local inputString, file = initializeInputFile(inputFile, options, bufferSize)
 
     local endOfHeaders, parserArgs, _ = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep)
     parserArgs.buffered = true
 
-    local parsedBuffer, startLine, totalColumnCount = parseString(inputString, endOfHeaders, parserArgs)
+    local parsedBuffer, endOfParsedInput, totalColumnCount = parseString(inputString, endOfHeaders, parserArgs)
     parserArgs.totalColumnCount = totalColumnCount
 
-    inputString = ssub(inputString, startLine)
-    local bufferIndex = 0
+    inputString = ssub(inputString, endOfParsedInput)
+    local bufferIndex, returnedRowsCount = 0, 0
     local currentRow, newInput
 
     return function()
@@ -548,10 +549,11 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
         bufferIndex = bufferIndex + 1
         currentRow = parsedBuffer[bufferIndex]
         if currentRow then
-            return currentRow
+            returnedRowsCount = returnedRowsCount + 1
+            return returnedRowsCount, currentRow
         end
 
-        -- reads more of the input
+        -- read more of the input
         newInput = file:read(bufferSize)
         if not newInput then
             file:close()
@@ -562,16 +564,19 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
         inputString = inputString .. newInput
 
         -- re-analyze and load buffer
-        parsedBuffer, startLine = parseString(inputString, 1, parserArgs)
+        parserArgs.rowOffset = returnedRowsCount
+        parsedBuffer, endOfParsedInput = parseString(inputString, 1, parserArgs)
         bufferIndex = 1
 
         -- cut the input string down
-        inputString = ssub(inputString, startLine)
+        inputString = ssub(inputString, endOfParsedInput)
 
         if #parsedBuffer == 0 then
             error("ftcsv: bufferSize needs to be larger to parse this file")
         end
-        return parsedBuffer[bufferIndex]
+
+        returnedRowsCount = returnedRowsCount + 1
+        return returnedRowsCount, parsedBuffer[bufferIndex]
     end
 end
 
