@@ -362,38 +362,6 @@ local function handleHeaders(headerField, options)
     return headerField
 end
 
-local function findNewlineWhenNotQuoted(str)
-    local i = 1
-    local quote = sbyte('"')
-    local newlines = {
-        [sbyte("\n")] = true,
-        [sbyte("\r")] = true
-    }
-    local quoted = false
-    local char = sbyte(str, i)
-    local oldchar
-    repeat
-        -- this should still work for escaped quotes
-        -- ex: " a "" b \r\n " -- there is always a pair around the newline
-        if char == quote then
-            quoted = not quoted
-        end
-        i = i + 1
-        oldchar = char
-        char = sbyte(str, i)
-    until (newlines[char] and not quoted) or char == nil
-    if oldchar == sbyte("\r") and char == sbyte("\n") then
-        i = i + 1
-    end
-    return i
-end
-
-local function includesBOM(inputString)
-    return sbyte(inputString, 1) == 239
-        and sbyte(inputString, 2) == 187
-        and sbyte(inputString, 3) == 191
-end
-
 -- load an entire file into memory
 local function loadFile(textFile, amount)
     local file = io.open(textFile, "r")
@@ -405,20 +373,20 @@ local function loadFile(textFile, amount)
     return lines, file
 end
 
-local function initializeInputFromStringOrFile(inputFile, options)
+local function initializeInputFromStringOrFile(inputFile, options, amount)
     -- handle input via string or file!
-    local inputString
+    local inputString, file
     if options.loadFromString then
         inputString = inputFile
     else
-        inputString = loadFile(inputFile, "*all")
+        inputString, file = loadFile(inputFile, amount)
     end
 
     -- if they sent in an empty file...
     if inputString == "" then
         error('ftcsv: Cannot parse an empty file')
     end
-    return inputString
+    return inputString, file
 end
 
 local function parseOptions(delimiter, options)
@@ -470,23 +438,47 @@ local function parseOptions(delimiter, options)
 
 end
 
--- runs the show!
-function ftcsv.parse(inputFile, delimiter, options)
-    -- make sure options make sense and get fields to keep
-    local options, fieldsToKeep = parseOptions(delimiter, options)
-
-    local inputString = initializeInputFromStringOrFile(inputFile, options)
-
-    -- determine start of input
-    local startLine = 1
-    if includesBOM(inputString) then
-        startLine = 4
+local function findEndOfHeaders(str)
+    local i = 1
+    local quote = sbyte('"')
+    local newlines = {
+        [sbyte("\n")] = true,
+        [sbyte("\r")] = true
+    }
+    local quoted = false
+    local char = sbyte(str, i)
+    local oldchar
+    repeat
+        -- this should still work for escaped quotes
+        -- ex: " a "" b \r\n " -- there is always a pair around the newline
+        if char == quote then
+            quoted = not quoted
+        end
+        i = i + 1
+        oldchar = char
+        char = sbyte(str, i)
+    until (newlines[char] and not quoted) or char == nil
+    if oldchar == sbyte("\r") and char == sbyte("\n") then
+        i = i + 1
     end
+    return i
+end
 
-    -- parse through the headers!
-    local endOfHeaderRow = findNewlineWhenNotQuoted(inputString)
+local function determineBOMOffset(inputString)
+    if sbyte(inputString, 1) == 239
+        and sbyte(inputString, 2) == 187
+        and sbyte(inputString, 3) == 191 then
+        return 4
+    else
+        return 1
+    end
+end
 
-    -- set options
+local function parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep)
+    local startLine = determineBOMOffset(inputString)
+
+    local endOfHeaderRow = findEndOfHeaders(inputString)
+
     local parserArgs = {
         delimiter = delimiter,
         headerField = nil,
@@ -506,107 +498,80 @@ function ftcsv.parse(inputFile, delimiter, options)
 
     if options.headers == false then endOfHeaders = startLine end
 
-    local realHeaders = determineRealHeaders(modifiedHeaders, fieldsToKeep)
+    local finalHeaders = determineRealHeaders(modifiedHeaders, fieldsToKeep)
     if options.headers ~= false then
-        local outputMetaTable = createOutputMetaTable(realHeaders)
+        local outputMetaTable = createOutputMetaTable(finalHeaders)
         parserArgs.outputMetaTable = outputMetaTable
     end
 
-    -- actually parse through the whole file
+    return endOfHeaders, parserArgs, finalHeaders
+end
+
+-- runs the show!
+function ftcsv.parse(inputFile, delimiter, options)
+    local options, fieldsToKeep = parseOptions(delimiter, options)
+
+    local inputString = initializeInputFromStringOrFile(inputFile, options, "*all")
+
+    local endOfHeaders, parserArgs, finalHeaders = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep)
+
     local output = parseString(inputString, endOfHeaders, parserArgs)
 
-    return output, realHeaders
+    return output, finalHeaders
+end
+
+local function initializeInputFile(inputString, options, bufferSize)
+    if options.loadFromString == true then
+        error("ftcsv: parseLine currently doesn't support loading from string")
+    end
+    return initializeInputFromStringOrFile(inputString, options, bufferSize)
 end
 
 function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
     -- make sure options make sense and get fields to keep
     local options, fieldsToKeep = parseOptions(delimiter, options)
 
-    -- handle the file
-    if options.loadFromString == true then
-        error("ftcsv: parseLine currently doesn't support loading from string")
-    end
+    local inputString, file = initializeInputFromStringOrFile(inputFile, options, bufferSize)
 
-    -- load it up!
-    local inputString, file = loadFile(inputFile, bufferSize)
-    -- if they sent in an empty file...
-    if inputString == "" then
-        error('ftcsv: Cannot parse an empty file')
-    end
+    local endOfHeaders, parserArgs, _ = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep)
+    parserArgs.buffered = true
 
-    -- determine start of input
-    local startLine = 1
-    if includesBOM(inputString) then
-        startLine = 4
-    end
-
-    -- parse through the headers!
-    local endOfHeaderRow = findNewlineWhenNotQuoted(inputString)
-
-    -- set options
-    local parserArgs = {
-        delimiter = delimiter,
-        headerField = nil,
-        fieldsToKeep = nil,
-        inputLength = endOfHeaderRow,
-        buffered = true,
-        ignoreQuotes = options.ignoreQuotes
-    }
-    local rawHeaders, i = parseString(inputString, startLine, parserArgs)
-
-    -- reset the start if we don't have headers
-    if options.headers == false then i = startLine end
-
-    -- manipulate the headers as per the options
-    local modifiedHeaders = handleHeaders(rawHeaders[1], options)
-    parserArgs.headerField = modifiedHeaders
-    parserArgs.fieldsToKeep = fieldsToKeep
-    parserArgs.inputLength = nil
-    -- parserArgs.ignoreQuotes = true
-
-    local parsedBuffer, startLine, totalColumnCount = parseString(inputString, i, parserArgs)
+    local parsedBuffer, startLine, totalColumnCount = parseString(inputString, endOfHeaders, parserArgs)
     parserArgs.totalColumnCount = totalColumnCount
 
     inputString = ssub(inputString, startLine)
-    local parsedBufferIndex = 0
+    local bufferIndex = 0
+    local currentRow, newInput
 
     return function()
         -- check parsed buffer for value
-        parsedBufferIndex = parsedBufferIndex + 1
-        local out = parsedBuffer[parsedBufferIndex]
-
-        -- the last parsedBuffer value is incomplete, this avoids returning it
-        -- if parsedBuffer[parsedBufferIndex+1] then
-        if out then
-            -- print("returning things")
-            return out
+        bufferIndex = bufferIndex + 1
+        currentRow = parsedBuffer[bufferIndex]
+        if currentRow then
+            return currentRow
         end
 
         -- reads more of the input
-        local newInput = file:read(bufferSize)
+        newInput = file:read(bufferSize)
         if not newInput then
-            -- print("closing file")
             file:close()
             return nil
         end
 
         -- appends the new input to what was left over
         inputString = inputString .. newInput
-        -- print("input string", #inputString, inputString)
 
         -- re-analyze and load buffer
         parsedBuffer, startLine = parseString(inputString, 1, parserArgs)
-        parsedBufferIndex = 1
+        bufferIndex = 1
 
         -- cut the input string down
-        -- print("startLine", startLine)
         inputString = ssub(inputString, startLine)
 
-        -- print("parsedBufferSize", #parsedBuffer)
         if #parsedBuffer == 0 then
             error("ftcsv: bufferSize needs to be larger to parse this file")
         end
-        return parsedBuffer[parsedBufferIndex]
+        return parsedBuffer[bufferIndex]
     end
 end
 
