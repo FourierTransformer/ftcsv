@@ -152,11 +152,12 @@ local function parseString(inputString, i, options)
     local delimiterByte = sbyte(options.delimiter)
 
     -- explode most used options
-    local fieldsToKeep = options.fieldsToKeep
-    local headerField = options.headerField
-    local buffered = options.buffered
-    local ignoreQuotes = options.ignoreQuotes
     local outputMetaTable = options.outputMetaTable
+    local fieldsToKeep = options.fieldsToKeep
+    local ignoreQuotes = options.ignoreQuotes
+    local headerField = options.headerField
+    local endOfFile = options.endOfFile
+    local buffered = options.buffered
 
     local outResults = {}
 
@@ -250,7 +251,7 @@ local function parseString(inputString, i, options)
             if fieldNum < totalColumnCount then
                 -- sometimes in buffered mode, the buffer starts with a newline
                 -- this skips the newline and lets the parsing continue.
-                if lineNum == 1 and fieldNum == 1 and buffered then
+                if buffered and lineNum == 1 and fieldNum == 1 then
                     fieldStart = i + 1 + skipChar
                     lineStart = fieldStart
                 else
@@ -287,7 +288,12 @@ local function parseString(inputString, i, options)
             currentChar = nextChar
         end
         skipChar = 0
-        end
+    end
+
+    if buffered and not endOfFile then
+        outResults[lineNum] = nil
+        return outResults, lineStart
+    end
 
     -- create last new field
     assignValueToField()
@@ -299,7 +305,6 @@ local function parseString(inputString, i, options)
     end
 
     -- remove last field if empty
-    -- TODO: look into buffered here, as there's likely an edge case here.
     if fieldNum < totalColumnCount then
 
         -- indicates last field was really just a CRLF,
@@ -307,14 +312,7 @@ local function parseString(inputString, i, options)
         if fieldNum == 1 and field == "" then
             outResults[lineNum] = nil
         else
-
-            -- TODO: look into buffered... this is basically a side effect right now
-            if buffered then
-                outResults[lineNum] = nil
-                return outResults, lineStart
-            else
-                error('ftcsv: too few columns in row ' .. options.rowOffset + lineNum)
-            end
+            error('ftcsv: too few columns in row ' .. options.rowOffset + lineNum)
         end
     end
 
@@ -424,7 +422,7 @@ local function parseOptions(delimiter, options)
         if options.ignoreQuotes == nil then
             options.ignoreQuotes = false
         else
-            assert(type(options.loadFromString) == "boolean", "ftcsv only takes a boolean value for optional parameter 'ignoreQuotes'. You passed in '" .. tostring(options.ignoreQuotes) .. "' of type '" .. type(options.ignoreQuotes) .. "'.")
+            assert(type(options.ignoreQuotes) == "boolean", "ftcsv only takes a boolean value for optional parameter 'ignoreQuotes'. You passed in '" .. tostring(options.ignoreQuotes) .. "' of type '" .. type(options.ignoreQuotes) .. "'.")
         end
     else
         options = {
@@ -447,7 +445,6 @@ local function findEndOfHeaders(str)
     }
     local quoted = false
     local char = sbyte(str, i)
-    local oldchar
     repeat
         -- this should still work for escaped quotes
         -- ex: " a "" b \r\n " -- there is always a pair around the newline
@@ -455,16 +452,18 @@ local function findEndOfHeaders(str)
             quoted = not quoted
         end
         i = i + 1
-        oldchar = char
         char = sbyte(str, i)
     until (newlines[char] and not quoted) or char == nil
-    if oldchar == sbyte("\r") and char == sbyte("\n") then
+
+    local nextChar = sbyte(str, i+1)
+    if nextChar == sbyte("\n") and char == sbyte("\r") then
         i = i + 1
     end
     return i
 end
 
 local function determineBOMOffset(inputString)
+    -- BOM files start with bytes 239, 187, 191
     if sbyte(inputString, 1) == 239
         and sbyte(inputString, 2) == 187
         and sbyte(inputString, 3) == 191 then
@@ -521,6 +520,14 @@ function ftcsv.parse(inputFile, delimiter, options)
     return output, finalHeaders
 end
 
+local function getFileSize (file)
+    local current = file:seek()
+    local size = file:seek("end")
+    file:seek("set", current)
+    return size
+end
+
+
 local function initializeInputFile(inputString, options, bufferSize)
     if options.loadFromString == true then
         error("ftcsv: parseLine currently doesn't support loading from string")
@@ -537,12 +544,17 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
     local endOfHeaders, parserArgs, _ = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep)
     parserArgs.buffered = true
 
+    local fileSize = getFileSize(file)
+    if file:seek() >= fileSize then
+        parserArgs.endOfFile = true
+    end
+
     local parsedBuffer, endOfParsedInput, totalColumnCount = parseString(inputString, endOfHeaders, parserArgs)
     parserArgs.totalColumnCount = totalColumnCount
 
     inputString = ssub(inputString, endOfParsedInput)
     local bufferIndex, returnedRowsCount = 0, 0
-    local currentRow, newInput
+    local currentRow, buffer
 
     return function()
         -- check parsed buffer for value
@@ -554,14 +566,18 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
         end
 
         -- read more of the input
-        newInput = file:read(bufferSize)
-        if not newInput then
+        buffer = file:read(bufferSize)
+        if not buffer then
             file:close()
             return nil
+        else
+            if file:seek() == fileSize then
+                parserArgs.endOfFile = true
+            end
         end
 
         -- appends the new input to what was left over
-        inputString = inputString .. newInput
+        inputString = inputString .. buffer
 
         -- re-analyze and load buffer
         parserArgs.rowOffset = returnedRowsCount
