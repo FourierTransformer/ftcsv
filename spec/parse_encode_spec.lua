@@ -43,6 +43,22 @@ describe("csv decode", function()
 	end
 end)
 
+describe("csv parseLine decode", function()
+	for _, value in ipairs(files) do
+		it("should handle " .. value, function()
+			local json = loadFile("spec/json/" .. value .. ".json")
+			json = cjson.decode(json)
+			local parse = {}
+			for i, v in ftcsv.parseLine("spec/csvs/" .. value .. ".csv", ",", 1024) do
+				parse[i] = v
+				assert.are.same(json[i], v)
+			end
+			assert.are.same(#json, #parse)
+			assert.are.same(json, parse)
+		end)
+	end
+end)
+
 describe("csv decode from string", function()
 	for _, value in ipairs(files) do
 		it("should handle " .. value, function()

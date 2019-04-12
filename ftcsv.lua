@@ -298,12 +298,6 @@ local function parseString(inputString, i, options)
     -- create last new field
     assignValueToField()
 
-    -- check if outResults exists
-    -- TODO: better buffer handling
-    if outResults == nil and buffered then
-        error("ftcsv: bufferSize needs to be larger to parse this file")
-    end
-
     -- remove last field if empty
     if fieldNum < totalColumnCount then
 
