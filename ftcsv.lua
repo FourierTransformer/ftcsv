@@ -116,7 +116,15 @@ local function determineTotalColumnCount(headerField, fieldsToKeep)
     return totalColumnCount
 end
 
-local function createOutputMetaTable(finalHeaders)
+local function generateHeadersMetamethod(finalHeaders)
+    -- if a header field tries to escape, we will simply return nil
+    -- the parser will still parse, but wont get the performance benefit of
+    -- having headers predefined
+    for _, headers in ipairs(finalHeaders) do
+        if headers:find("]") then
+            return nil
+        end
+    end
     local rawSetup = "local t, k, _ = ... \
     rawset(t, k, {[ [[%s]] ]=true})"
     rawSetup = rawSetup:format(table.concat(finalHeaders, "]] ]=true, [ [["))
@@ -152,7 +160,7 @@ local function parseString(inputString, i, options)
     local delimiterByte = sbyte(options.delimiter)
 
     -- explode most used options
-    local outputMetaTable = options.outputMetaTable
+    local headersMetamethod = options.headersMetamethod
     local fieldsToKeep = options.fieldsToKeep
     local ignoreQuotes = options.ignoreQuotes
     local headerField = options.headerField
@@ -169,8 +177,8 @@ local function parseString(inputString, i, options)
         setmetatable(headerField, headerMeta)
     end
 
-    if outputMetaTable then
-        setmetatable(outResults, {__newindex = outputMetaTable})
+    if headersMetamethod then
+        setmetatable(outResults, {__newindex = headersMetamethod})
     end
     outResults[1] = {}
 
@@ -430,7 +438,7 @@ local function parseOptions(delimiter, options)
 
 end
 
-local function findEndOfHeaders(str)
+local function findEndOfHeaders(str, entireFile)
     local i = 1
     local quote = sbyte('"')
     local newlines = {
@@ -448,6 +456,10 @@ local function findEndOfHeaders(str)
         i = i + 1
         char = sbyte(str, i)
     until (newlines[char] and not quoted) or char == nil
+
+    if not entireFile and char == nil then
+        error("ftcsv: bufferSize needs to be larger to parse this file")
+    end
 
     local nextChar = sbyte(str, i+1)
     if nextChar == sbyte("\n") and char == sbyte("\r") then
@@ -467,10 +479,10 @@ local function determineBOMOffset(inputString)
     end
 end
 
-local function parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep)
+local function parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep, entireFile)
     local startLine = determineBOMOffset(inputString)
 
-    local endOfHeaderRow = findEndOfHeaders(inputString)
+    local endOfHeaderRow = findEndOfHeaders(inputString, entireFile)
 
     local parserArgs = {
         delimiter = delimiter,
@@ -494,8 +506,8 @@ local function parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsT
 
     local finalHeaders = determineRealHeaders(modifiedHeaders, fieldsToKeep)
     if options.headers ~= false then
-        local outputMetaTable = createOutputMetaTable(finalHeaders)
-        parserArgs.outputMetaTable = outputMetaTable
+        local headersMetamethod = generateHeadersMetamethod(finalHeaders)
+        parserArgs.headersMetamethod = headersMetamethod
     end
 
     return endOfHeaders, parserArgs, finalHeaders
@@ -507,7 +519,7 @@ function ftcsv.parse(inputFile, delimiter, options)
 
     local inputString = initializeInputFromStringOrFile(inputFile, options, "*all")
 
-    local endOfHeaders, parserArgs, finalHeaders = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep)
+    local endOfHeaders, parserArgs, finalHeaders = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep, true)
 
     local output = parseString(inputString, endOfHeaders, parserArgs)
 
@@ -521,6 +533,13 @@ local function getFileSize (file)
     return size
 end
 
+local function determineAtEndOfFile(file, fileSize)
+    if file:seek() >= fileSize then
+        return true
+    else
+        return false
+    end
+end
 
 local function initializeInputFile(inputString, options, bufferSize)
     if options.loadFromString == true then
@@ -529,19 +548,17 @@ local function initializeInputFile(inputString, options, bufferSize)
     return initializeInputFromStringOrFile(inputString, options, bufferSize)
 end
 
-function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
-    -- make sure options make sense and get fields to keep
-    local options, fieldsToKeep = parseOptions(delimiter, options)
+function ftcsv.parseLine(inputFile, delimiter, bufferSize, userOptions)
+    local options, fieldsToKeep = parseOptions(delimiter, userOptions)
 
     local inputString, file = initializeInputFile(inputFile, options, bufferSize)
 
-    local endOfHeaders, parserArgs, _ = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep)
-    parserArgs.buffered = true
-
     local fileSize = getFileSize(file)
-    if file:seek() >= fileSize then
-        parserArgs.endOfFile = true
-    end
+    local atEndOfFile = determineAtEndOfFile(file, fileSize)
+
+    local endOfHeaders, parserArgs, _ = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep, atEndOfFile)
+    parserArgs.buffered = true
+    parserArgs.endOfFile = atEndOfFile
 
     local parsedBuffer, endOfParsedInput, totalColumnCount = parseString(inputString, endOfHeaders, parserArgs)
     parserArgs.totalColumnCount = totalColumnCount
@@ -565,6 +582,9 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, options)
             file:close()
             return nil
         else
+            -- TODO: see if there's a noticable difference between the
+            -- function call and doing it directly.
+            -- parserArgs.endOfFile = determineAtEndOfFile(file, fileSize)
             if file:seek() == fileSize then
                 parserArgs.endOfFile = true
             end
