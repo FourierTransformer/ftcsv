@@ -463,8 +463,8 @@ describe("csv features", function()
     for bom, i in pairs(BOM) do
         for newline, j in pairs(newlines) do
             for _, endline in ipairs(endlines) do
-                local name = "should handle ignoring quotes (%s + %s + %s) EOF: %s"
-                it(name:format(bom, newline, quote, endline), function()
+                local name = "should handle ignoring quotes (%s + %s) EOF: %s"
+                it(name:format(bom, newline, endline), function()
                     local expectedHeaders = {"a", "b", "c"}
                     local expected = {}
                     expected[1] = {}
