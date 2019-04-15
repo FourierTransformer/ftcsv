@@ -460,4 +460,33 @@ describe("csv features", function()
         end
     end
 
+    for bom, i in pairs(BOM) do
+        for newline, j in pairs(newlines) do
+            for _, endline in ipairs(endlines) do
+                local name = "should handle ignoring quotes (%s + %s + %s) EOF: %s"
+                it(name:format(bom, newline, quote, endline), function()
+                    local expectedHeaders = {"a", "b", "c"}
+                    local expected = {}
+                    expected[1] = {}
+                    expected[1].a = '"apple"'
+                    expected[1].b = '"banana"'
+                    expected[1].c = '"carrot"'
+
+                    local defaultString = '%sa,b,c%s"apple","banana","carrot"%s'
+
+                    if endline == "NONE" then
+                        defaultString = defaultString:format(i, j, "")
+                    else
+                        defaultString = defaultString:format(i, j, j)
+                    end
+
+                    local options = {loadFromString=true, ignoreQuotes=true}
+                    local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                    assert.are.same(expected, actual)
+                    assert.are.same(expectedHeaders, actualHeaders)
+                end)
+            end
+        end
+    end
+
 end)

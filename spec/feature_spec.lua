@@ -308,4 +308,14 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle headers attempting to escape", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1]["]] print('hello')"] = "apple"
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local actual = ftcsv.parse("]] print('hello'),b,c\napple,banana,carrot", ",", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
+
 end)

@@ -42,3 +42,16 @@ it("should error out when you want to encode a table and specify a field that do
 
 	assert.has_error(test, "ftcsv: the field 'c' doesn't exist in the inputTable")
 end)
+
+describe("parseLine features small, nonworking buffer size", function()
+    it("should error out when trying to load from string", function()
+        local test = function()
+            local parse = {}
+            for i, line in ftcsv.parseLine("a,b,c\n1,2,3", ",", 63, {loadFromString=true}) do
+                parse[i] = line
+            end
+            return parse
+        end
+        assert.has_error(test, "ftcsv: parseLine currently doesn't support loading from string")
+    end)
+end)

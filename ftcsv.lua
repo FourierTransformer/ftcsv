@@ -5,7 +5,7 @@ local ftcsv = {
     _LICENSE     = [[
         The MIT License (MIT)
 
-        Copyright (c) 2016-2018 Shakil Thakur
+        Copyright (c) 2016-2019 Shakil Thakur
 
         Permission is hereby granted, free of charge, to any person obtaining a copy
         of this software and associated documentation files (the "Software"), to deal
@@ -88,7 +88,9 @@ else
     function luaCompatibility.findClosingQuote(i, inputLength, inputString, quote, doubleQuoteEscape)
         local j, difference
         i, j = inputString:find('"+', i)
-        if j == nil then return end
+        if j == nil then
+            return nil
+        end
         if i == nil then
             return inputLength-1, doubleQuoteEscape
         end
@@ -189,7 +191,7 @@ local function parseString(inputString, i, options)
         if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
 
             -- create new field
-            if sbyte(inputString, i-1) == quote then
+            if ignoreQuotes == false and sbyte(inputString, i-1) == quote then
                 field = ssub(inputString, fieldStart, i-2)
             else
                 field = ssub(inputString, fieldStart, i-1)
