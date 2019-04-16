@@ -91,9 +91,6 @@ else
         if j == nil then
             return nil
         end
-        if i == nil then
-            return inputLength-1, doubleQuoteEscape
-        end
         difference = j - i
         if difference >= 1 then doubleQuoteEscape = true end
         if difference == 1 then
@@ -285,9 +282,14 @@ local function parseString(inputString, i, options)
 
         -- in buffered mode and it can't find the closing quote
         -- it usually means in the middle of a buffer and need to backtrack
-        if i == nil and buffered then
-            outResults[lineNum] = nil
-            return outResults, lineStart
+        if i == nil then
+            if buffered then
+                outResults[lineNum] = nil
+                return outResults, lineStart
+            else
+                error("ftcsv: can't find closing quote in row " .. options.rowOffset + lineNum ..
+                 ". Try running with the option ignoreQuotes=true if the source incorrectly uses quotes.")
+            end
         end
 
         -- Increment Counter

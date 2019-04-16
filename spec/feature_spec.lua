@@ -318,4 +318,14 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle ignoring the single quote", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = '"apple'
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true, ignoreQuotes=true})
+		assert.are.same(expected, actual)
+	end)
+
 end)

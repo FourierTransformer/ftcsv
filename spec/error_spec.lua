@@ -55,3 +55,10 @@ describe("parseLine features small, nonworking buffer size", function()
         assert.has_error(test, "ftcsv: parseLine currently doesn't support loading from string")
     end)
 end)
+
+it("should error when dealing with quotes", function()
+	local test = function()
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true})
+	end
+	assert.has_error(test, "ftcsv: can't find closing quote in row 1. Try running with the option ignoreQuotes=true if the source incorrectly uses quotes.")
+end)
