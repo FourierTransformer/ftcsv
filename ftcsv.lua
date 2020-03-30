@@ -27,6 +27,10 @@ local ftcsv = {
     ]]
 }
 
+-- perf
+local sbyte = string.byte
+local ssub = string.sub
+
 -- luajit/lua compatability layer
 local luaCompatibility = {}
 if type(jit) == 'table' or _ENV then
@@ -84,10 +88,6 @@ else
     end
 end
 
-
--- perf
-local sbyte = string.byte
-local ssub = string.sub
 
 -- determine the real headers as opposed to the header mapping
 local function determineRealHeaders(headerField, fieldsToKeep) 
