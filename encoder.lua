@@ -99,8 +99,7 @@ local function getHeadersFromOptions(options)
     return headers
 end
 
--- works really quickly with luajit-2.1, because table.concat life
-local function encode(inputTable, delimiter, options)
+local function initializeGenerator(inputTable, delimiter, options)
     -- delimiter MUST be one character
     assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
 
@@ -112,6 +111,12 @@ local function encode(inputTable, delimiter, options)
 
     local escapedHeaders = escapeHeadersForOutput(headers)
     local output = initializeOutputWithEscapedHeaders(escapedHeaders, delimiter)
+    return output, headers
+end
+
+-- works really quickly with luajit-2.1, because table.concat life
+local function encode(inputTable, delimiter, options)
+    local output, headers = initializeGenerator(inputTable, delimiter, options)
 
     for i, line in csvLineGenerator(inputTable, delimiter, headers) do
         output[i+1] = line
@@ -119,6 +124,14 @@ local function encode(inputTable, delimiter, options)
 
     -- combine and return final string
     return table.concat(output)
+end
+
+local function encodeLine(inputTable, delimiter, options)
+    local output, headers = initializeGenerator(inputTable, delimiter, options)
+    -- something something create a function, first time return output[1]
+    -- then return csvLineGenerator
+    -- csvLineGenerator(inputTable, delimiter, headers)
+
 end
 
 return encode

@@ -93,7 +93,7 @@ else
         end
         difference = j - i
         if difference >= 1 then doubleQuoteEscape = true end
-        if difference == 1 then
+        if difference % 2 == 1 then
             return luaCompatibility.findClosingQuote(j+1, inputLength, inputString, quote, doubleQuoteEscape)
         end
         return j-1, doubleQuoteEscape
@@ -258,7 +258,7 @@ local function parseString(inputString, i, options)
             if fieldNum < totalColumnCount then
                 -- sometimes in buffered mode, the buffer starts with a newline
                 -- this skips the newline and lets the parsing continue.
-                if buffered and lineNum == 1 and fieldNum == 1 then
+                if buffered and lineNum == 1 and fieldNum == 1 and field == "" then
                     fieldStart = i + 1 + skipChar
                     lineStart = fieldStart
                 else
@@ -393,7 +393,7 @@ local function initializeInputFromStringOrFile(inputFile, options, amount)
     return inputString, file
 end
 
-local function parseOptions(delimiter, options)
+local function parseOptions(delimiter, options, fromParseLine)
     -- delimiter MUST be one character
     assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
 
@@ -430,11 +430,18 @@ local function parseOptions(delimiter, options)
         else
             assert(type(options.ignoreQuotes) == "boolean", "ftcsv only takes a boolean value for optional parameter 'ignoreQuotes'. You passed in '" .. tostring(options.ignoreQuotes) .. "' of type '" .. type(options.ignoreQuotes) .. "'.")
         end
+        if options.bufferSize ~= nil then
+            assert(type(options.bufferSize) == "number", "ftcsv only takes a number value for optional parameter 'bufferSize'. You passed in '" .. tostring(options.bufferSize) .. "' of type '" .. type(options.bufferSize) .. "'.")
+            if fromParseLine == false then
+                error("ftcsv: bufferSize can only be specified using 'parseLine'. When using 'parse', the entire file is read into memory")
+            end
+        end
     else
         options = {
             ["headers"] = true,
             ["loadFromString"] = false,
-            ["ignoreQuotes"] = false
+            ["ignoreQuotes"] = false,
+            ["bufferSize"] = 2^16
         }
     end
 
@@ -519,7 +526,7 @@ end
 
 -- runs the show!
 function ftcsv.parse(inputFile, delimiter, options)
-    local options, fieldsToKeep = parseOptions(delimiter, options)
+    local options, fieldsToKeep = parseOptions(delimiter, options, false)
 
     local inputString = initializeInputFromStringOrFile(inputFile, options, "*all")
 
@@ -545,20 +552,26 @@ local function determineAtEndOfFile(file, fileSize)
     end
 end
 
-local function initializeInputFile(inputString, options, bufferSize)
+local function initializeInputFile(inputString, options)
     if options.loadFromString == true then
         error("ftcsv: parseLine currently doesn't support loading from string")
     end
-    return initializeInputFromStringOrFile(inputString, options, bufferSize)
+    return initializeInputFromStringOrFile(inputString, options, options.bufferSize)
 end
 
-function ftcsv.parseLine(inputFile, delimiter, bufferSize, userOptions)
-    local options, fieldsToKeep = parseOptions(delimiter, userOptions)
+function ftcsv.parseLine(inputFile, delimiter, userOptions)
+    local options, fieldsToKeep = parseOptions(delimiter, userOptions, true)
+    local inputString, file = initializeInputFile(inputFile, options)
 
-    local inputString, file = initializeInputFile(inputFile, options, bufferSize)
 
-    local fileSize = getFileSize(file)
-    local atEndOfFile = determineAtEndOfFile(file, fileSize)
+    local fileSize, atEndOfFile = 0, false
+    if options.bufferSize == "*all" then
+        file = nil
+        atEndOfFile = true
+    else
+        fileSize = getFileSize(file)
+        atEndOfFile = determineAtEndOfFile(file, fileSize)
+    end
 
     local endOfHeaders, parserArgs, _ = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep, atEndOfFile)
     parserArgs.buffered = true
@@ -581,17 +594,16 @@ function ftcsv.parseLine(inputFile, delimiter, bufferSize, userOptions)
         end
 
         -- read more of the input
-        buffer = file:read(bufferSize)
-        if not buffer then
-            file:close()
-            return nil
-        else
-            -- TODO: see if there's a noticable difference between the
-            -- function call and doing it directly.
-            -- parserArgs.endOfFile = determineAtEndOfFile(file, fileSize)
-            if file:seek() == fileSize then
-                parserArgs.endOfFile = true
+        if file then
+            buffer = file:read(options.bufferSize)
+            if not buffer then
+                file:close()
+                return nil
+            else
+                parserArgs.endOfFile = determineAtEndOfFile(file, fileSize)
             end
+        else
+            return nil
         end
 
         -- appends the new input to what was left over

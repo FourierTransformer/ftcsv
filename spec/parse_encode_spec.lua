@@ -49,7 +49,7 @@ describe("csv parseLine decode", function()
 			local json = loadFile("spec/json/" .. value .. ".json")
 			json = cjson.decode(json)
 			local parse = {}
-			for i, v in ftcsv.parseLine("spec/csvs/" .. value .. ".csv", ",", 1024) do
+			for i, v in ftcsv.parseLine("spec/csvs/" .. value .. ".csv", ",") do
 				parse[i] = v
 				assert.are.same(json[i], v)
 			end

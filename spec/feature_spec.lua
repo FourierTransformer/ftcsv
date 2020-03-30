@@ -61,6 +61,16 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+        it("should handle escaped doublequotes", function()
+                local expected = {}
+                expected[1] = {}
+                expected[1].a = 'A"B""C'
+                expected[1].b = 'A""B"C'
+                expected[1].c = 'A"""B""C'
+                local actual = ftcsv.parse('a;b;c\n"A""B""""C";"A""""B""C";"A""""""B""""C"', ";", {loadFromString=true})
+                assert.are.same(expected, actual)
+        end)
+
 	it("should handle renaming a field", function()
 		local expected = {}
 		expected[1] = {}

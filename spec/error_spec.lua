@@ -47,7 +47,7 @@ describe("parseLine features small, nonworking buffer size", function()
     it("should error out when trying to load from string", function()
         local test = function()
             local parse = {}
-            for i, line in ftcsv.parseLine("a,b,c\n1,2,3", ",", 63, {loadFromString=true}) do
+            for i, line in ftcsv.parseLine("a,b,c\n1,2,3", ",", {loadFromString=true}) do
                 parse[i] = line
             end
             return parse
