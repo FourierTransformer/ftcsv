@@ -565,13 +565,8 @@ function ftcsv.parseLine(inputFile, delimiter, userOptions)
 
 
     local fileSize, atEndOfFile = 0, false
-    if options.bufferSize == "*all" then
-        file = nil
-        atEndOfFile = true
-    else
-        fileSize = getFileSize(file)
-        atEndOfFile = determineAtEndOfFile(file, fileSize)
-    end
+    fileSize = getFileSize(file)
+    atEndOfFile = determineAtEndOfFile(file, fileSize)
 
     local endOfHeaders, parserArgs, _ = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep, atEndOfFile)
     parserArgs.buffered = true
@@ -594,16 +589,12 @@ function ftcsv.parseLine(inputFile, delimiter, userOptions)
         end
 
         -- read more of the input
-        if file then
-            buffer = file:read(options.bufferSize)
-            if not buffer then
-                file:close()
-                return nil
-            else
-                parserArgs.endOfFile = determineAtEndOfFile(file, fileSize)
-            end
-        else
+        buffer = file:read(options.bufferSize)
+        if not buffer then
+            file:close()
             return nil
+        else
+            parserArgs.endOfFile = determineAtEndOfFile(file, fileSize)
         end
 
         -- appends the new input to what was left over

@@ -126,12 +126,4 @@ local function encode(inputTable, delimiter, options)
     return table.concat(output)
 end
 
-local function encodeLine(inputTable, delimiter, options)
-    local output, headers = initializeGenerator(inputTable, delimiter, options)
-    -- something something create a function, first time return output[1]
-    -- then return csvLineGenerator
-    -- csvLineGenerator(inputTable, delimiter, headers)
-
-end
-
 return encode
