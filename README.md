@@ -155,27 +155,26 @@ We ran ftcsv against a few different csv parsers ([PIL](http://www.lua.org/pil/2
 
 | Parser    | Lua                | LuaJIT             |
 | --------- | ------------------ | ------------------ |
-| PIL/csvutils  | 3.939 +/- 0.565 SD | 1.429 +/- 0.175 SD |
-| lua_csv   | 8.487 +/- 0.156 SD | 3.095 +/- 0.206 SD |
-| lpeg_josh | **1.350 +/- 0.191 SD** | 0.826 +/- 0.176 SD |
-| ftcsv     | 3.101 +/- 0.152 SD | **0.499 +/- 0.133 SD** |
+| PIL/csvutils  | 1.754 +/- 0.136 SD | 1.012 +/- 0.112 SD |
+| lua_csv   | 4.191 +/- 0.128 SD | 2.382 +/- 0.133 SD |
+| lpeg_josh | **0.996 +/- 0.149 SD** | 0.725 +/- 0.083 SD |
+| ftcsv     | 1.342 +/- 0.130 SD | **0.301 +/- 0.099 SD** |
 
-\* see Performance section below for an explanation
 
 ### 12 MB file, some fields are double quoted
 
 | Parser    | Lua                | LuaJIT             |
 | --------- | ------------------ | ------------------ |
-| PIL/csvutils  | 2.868 +/- 0.101 SD | 1.244 +/- 0.129 SD |
-| lua_csv   | 7.773 +/- 0.083 SD | 3.495 +/- 0.172 SD |
-| lpeg_josh | **1.146 +/- 0.191 SD** | 0.564 +/- 0.121 SD |
-| ftcsv     | 3.401 +/- 0.109 SD | **0.441 +/- 0.124 SD** |
+| PIL/csvutils  | 1.456 +/- 0.083 SD | 0.691 +/- 0.071 SD |
+| lua_csv   | 3.738 +/- 0.072 SD | 1.997 +/- 0.075 SD |
+| lpeg_josh | **0.638 +/- 0.070 SD** | 0.475 +/- 0.042 SD |
+| ftcsv     | 1.307 +/- 0.071 SD | **0.213 +/- 0.062 SD** |
 
 [LuaCSV](http://lua-users.org/lists/lua-l/2009-08/msg00012.html) was also tried, but usually errored out at odd places during parsing.
 
 NOTE: times are measured using `os.clock()`, so they are in CPU seconds. Each test was run 30 times in a randomized order. The file was pre-loaded, and only the csv decoding time was measured.
 
-Benchmarks were run under ftcsv 1.1.6
+Benchmarks were run under ftcsv 1.2.0
 
 ## Performance
 I did some basic testing and found that in lua, if you want to iterate over a string character-by-character and compare chars, `string.byte` performs faster than `string.sub`. As such, ftcsv iterates over the whole file and does byte compares to find quotes and delimiters and then generates a table from it. When using vanilla lua, it proved faster to use `string.find` instead of iterating character by character (which is faster in LuaJIT), so ftcsv accounts for that and will perform the fastest option that is availble. If you have thoughts on how to improve performance (either big picture or specifically within the code), create a GitHub issue - I'd love to hear about it!
