@@ -3,7 +3,7 @@
 
 ftcsv is a fast csv library written in pure Lua. It's been tested with LuaJIT 2.0/2.1 and Lua 5.1, 5.2, and 5.3
 
-It features two parsing modes, one for CSVs that can easily be loaded into memory (a few hundred MBs), and another for loading files using an iterator - useful for manipulating large files and customized loading. It correctly handles most common line endings (Windows, Linux, and OS9 line endings) and has UTF-8 support (it will correctly strip out the BOM if it exists).
+It features two parsing modes, one for CSVs that can easily be loaded into memory (up to a few hundred MBs depending on the system), and another for loading files using an iterator - useful for manipulating large files or processing during load. It correctly handles most csv (and csv-like) files found in the wild, from varying line endings (Windows, Linux, and OS9), UTF-8 BOM support, and odd delimiters. There are also various options that can tweak how a file is loaded, only grabbing a few fields, renaming fields, and parsing header-less files!
 
 ## Installing
 You can either grab `ftcsv.lua` from here or install via luarocks:
@@ -15,18 +15,9 @@ luarocks install ftcsv
 
 ## Parsing
 There are two main parsing methods: `ftcv.parse` and `ftcsv.parseLine`.
-`ftcsv.parse` loads the entire file and parses it, while `ftcsv.parseLine` is intended to be used as an iterator with a for loop returning one parsed line at a time.
+`ftcsv.parse` loads the entire file and parses it, while `ftcsv.parseLine` is an iterator that parses one line at a time.
 
 ### `ftcsv.parse(fileName, delimiter [, options])`
-
-<<<<<<< HEAD
-`ftcsv.parse` will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
-
-Just loading a csv file:
-```lua
-local ftcsv = require("ftcsv")
-local zipcodes = ftcsv.parse("free-zipcode-database.csv", ",")
-=======
 ftcsv will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data and a lua table containing the column headers. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
 
 Just loading a csv file:
@@ -36,26 +27,28 @@ local zipcodes, headers = ftcsv.parse("free-zipcode-database.csv", ",")
 >>>>>>> master
 ```
 
-### `ftcsv.parseLine(fileName, delimiter, bufferSize [, options])`
-`ftcsv.parseLine` will open a file and read `bufferSize` bytes of the file. It parses these lines and returns one line at a time. When all the lines in the buffer are read, it will read in another `bufferSize` bytes of a file and repeat the process until there are no more bytes left in the file to read. The `bufferSize` must be at least the length of the longest row. If the `bufferSize` is too small, an error is returned. If `bufferSize` is the length of the entire file, all of it will be read and returned one line at a time (performance is roughly the same as `ftcsv.parse`). The options are the same for `parseLine` and `parse` and are described below, with the exception of `loadFromString` as `parseLine` currently only works with files.
+### `ftcsv.parseLine(fileName, delimiter, [, options])`
+`ftcsv.parseLine` will open a file and read `bufferSize` bytes of the file. `bufferSize` defaults to 2^16 bytes, or can be specified in the options. `ftcsv.parseLine` is an iterator and returns one line at a time. When all the lines in the buffer are read, it will read in another `bufferSize` bytes of a file and repeat the process until the entire file has been read.
+
+If specifying `bufferSize` there are a couple of things to remember:
+ * `bufferSize` must be at least the length of the longest row.
+ * If `bufferSize` is too small, an error is returned. 
+ * If `bufferSize` is the length of the entire file, all of it will be read and returned one line at a time (performance is roughly the same as `ftcsv.parse`).
 
 Parsing through a csv file:
 ```lua
 local ftcsv = require("ftcsv")
-for zipcode in ftcsv.parseLine("free-zipcode-database.csv", ",", 10^6) do
+for zipcode in ftcsv.parseLine("free-zipcode-database.csv", ",") do
     print(zipcode.Zipcode)
     print(zipcode.State)
 end
 ```
 
 
-
-
 ### Options
-The following are optional parameters passed in via the third argument as a table. For example if you wanted to `loadFromString` and not use `headers`, you could use the following:
-```lua
-ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
-```
+The options are the same for `parseLine` and `parse`, with the exception of `loadFromString` and `bufferSize`. `loadFromString` can only works with `parse` and `bufferSize` can only be specified for `parseLine`.
+
+The following are optional parameters passed in via the third argument as a table.
  - `loadFromString`
 
  	If you want to load a csv from a string instead of a file, set `loadFromString` to `true` (default: `false`)
@@ -87,6 +80,15 @@ ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
 
  	Also Note: If you apply a function to the headers via headerFunc, and want to select fields from fieldsToKeep, you need to have what the post-modified header would be in fieldsToKeep.
 
+ - `ignoreQuotes`
+
+	If `ignoreQuotes` is `true`, it will leave all quotes in the final parsed output. This is useful in situations where the fields aren't quoted, but contain quotes, or if the CSV didn't handle quotes correctly and you're trying to parse it.
+	
+	```lua
+	local options = {loadFromString=true, ignoreQuotes=true}
+	local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", options)
+	```
+
  - `headerFunc`
 
  	Applies a function to every field in the header. If you are using `rename`, the function is applied after the rename.
@@ -116,7 +118,10 @@ ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
  	In the above example, the first field becomes 'a', the second field becomes 'b' and so on.
 
 For all tested examples, take a look in /spec/feature_spec.lua
-
+Example if you wanted to `loadFromString` and not use `headers`, you could use the following:
+```lua
+ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
+```
 
 ## Encoding
 ### `ftcsv.encode(inputTable, delimiter[, options])`
@@ -140,27 +145,53 @@ file:close()
 
 
 
-## Performance
-I did some basic testing and found that in lua, if you want to iterate over a string character-by-character and look for single chars, `string.byte` performs better than `string.sub`. As such, ftcsv iterates over the whole file and does byte compares to find quotes and delimiters and then generates a table from it. If you have thoughts on how to improve performance (either big picture or specifically within the code), create a GitHub issue - I'd love to hear about it!
-
-
-
 ## Error Handling
 ftcsv returns a litany of errors when passed a bad csv file or incorrect parameters. You can find a more detailed explanation of the more cryptic errors in [ERRORS.md](ERRORS.md)
 
+## Benchmarks
+We ran ftcsv against a few different csv parsers ([PIL](http://www.lua.org/pil/20.4.html)/[csvutils](http://lua-users.org/wiki/CsvUtils), [lua_csv](https://github.com/geoffleyland/lua-csv), and [lpeg_josh](http://lua-users.org/lists/lua-l/2009-08/msg00020.html)) for lua and here is what we found:
+
+### 20 MB file, every field is double quoted
+
+| Parser    | Lua                | LuaJIT             |
+| --------- | ------------------ | ------------------ |
+| PIL/csvutils  | 3.939 +/- 0.565 SD | 1.429 +/- 0.175 SD |
+| lua_csv   | 8.487 +/- 0.156 SD | 3.095 +/- 0.206 SD |
+| lpeg_josh | **1.350 +/- 0.191 SD** | 0.826 +/- 0.176 SD |
+| ftcsv     | 3.101 +/- 0.152 SD | **0.499 +/- 0.133 SD** |
+
+\* see Performance section below for an explanation
+
+### 12 MB file, some fields are double quoted
+
+| Parser    | Lua                | LuaJIT             |
+| --------- | ------------------ | ------------------ |
+| PIL/csvutils  | 2.868 +/- 0.101 SD | 1.244 +/- 0.129 SD |
+| lua_csv   | 7.773 +/- 0.083 SD | 3.495 +/- 0.172 SD |
+| lpeg_josh | **1.146 +/- 0.191 SD** | 0.564 +/- 0.121 SD |
+| ftcsv     | 3.401 +/- 0.109 SD | **0.441 +/- 0.124 SD** |
+
+[LuaCSV](http://lua-users.org/lists/lua-l/2009-08/msg00012.html) was also tried, but usually errored out at odd places during parsing.
+
+NOTE: times are measured using `os.clock()`, so they are in CPU seconds. Each test was run 30 times in a randomized order. The file was pre-loaded, and only the csv decoding time was measured.
+
+Benchmarks were run under ftcsv 1.1.6
+
+## Performance
+I did some basic testing and found that in lua, if you want to iterate over a string character-by-character and compare chars, `string.byte` performs faster than `string.sub`. As such, ftcsv iterates over the whole file and does byte compares to find quotes and delimiters and then generates a table from it. When using vanilla lua, it proved faster to use `string.find` instead of iterating character by character (which is faster in LuaJIT), so ftcsv accounts for that and will perform the fastest option that is availble. If you have thoughts on how to improve performance (either big picture or specifically within the code), create a GitHub issue - I'd love to hear about it!
 
 
 ## Contributing
 Feel free to create a new issue for any bugs you've found or help you need. If you want to contribute back to the project please do the following:
 
- 0. If it's a major change (aka more than a quick bugfix), please create an issue so we can discuss it!
- 1. Fork the repo
- 2. Create a new branch
- 3. Push your changes to the branch
- 4. Run the test suite and make sure it still works
- 5. Submit a pull request
- 6. Wait for review
- 7. Enjoy the changes made!
+ 1. If it's a major change (aka more than a quick bugfix), please create an issue so we can discuss it!
+ 2. Fork the repo
+ 3. Create a new branch
+ 4. Push your changes to the branch
+ 5. Run the test suite and make sure it still works
+ 6. Submit a pull request
+ 7. Wait for review
+ 8. Enjoy the changes made!
 
 
 
