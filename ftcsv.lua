@@ -5,7 +5,7 @@ local ftcsv = {
     _LICENSE     = [[
         The MIT License (MIT)
 
-        Copyright (c) 2016-2019 Shakil Thakur
+        Copyright (c) 2016-2020 Shakil Thakur
 
         Permission is hereby granted, free of charge, to any person obtaining a copy
         of this software and associated documentation files (the "Software"), to deal
@@ -135,12 +135,7 @@ local function generateHeadersMetamethod(finalHeaders)
     local rawSetup = "local t, k, _ = ... \
     rawset(t, k, {[ [[%s]] ]=true})"
     rawSetup = rawSetup:format(table.concat(finalHeaders, "]] ]=true, [ [["))
-
-    if _ENV then
-        return _G.load(rawSetup)
-    else
-        return loadstring(rawSetup)
-    end
+    luaCompatibility.load(rawSetup)
 end
 
 -- main function used to parse
