@@ -18,17 +18,16 @@ There are two main parsing methods: `ftcv.parse` and `ftcsv.parseLine`.
 `ftcsv.parse` loads the entire file and parses it, while `ftcsv.parseLine` is an iterator that parses one line at a time.
 
 ### `ftcsv.parse(fileName, delimiter [, options])`
-ftcsv will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data and a lua table containing the column headers. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
+`ftcsv.parse` will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data and a lua table containing the column headers. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
 
 Just loading a csv file:
 ```lua
 local ftcsv = require('ftcsv')
 local zipcodes, headers = ftcsv.parse("free-zipcode-database.csv", ",")
->>>>>>> master
 ```
 
 ### `ftcsv.parseLine(fileName, delimiter, [, options])`
-`ftcsv.parseLine` will open a file and read `bufferSize` bytes of the file. `bufferSize` defaults to 2^16 bytes, or can be specified in the options. `ftcsv.parseLine` is an iterator and returns one line at a time. When all the lines in the buffer are read, it will read in another `bufferSize` bytes of a file and repeat the process until the entire file has been read.
+`ftcsv.parseLine` will open a file and read `options.bufferSize` bytes of the file. `bufferSize` defaults to 2^16 bytes (which provides the fastest parsing on most unix-based systems), or can be specified in the options. `ftcsv.parseLine` is an iterator and returns one line at a time. When all the lines in the buffer are read, it will read in another `bufferSize` bytes of a file and repeat the process until the entire file has been read.
 
 If specifying `bufferSize` there are a couple of things to remember:
  * `bufferSize` must be at least the length of the longest row.
@@ -46,7 +45,7 @@ end
 
 
 ### Options
-The options are the same for `parseLine` and `parse`, with the exception of `loadFromString` and `bufferSize`. `loadFromString` can only works with `parse` and `bufferSize` can only be specified for `parseLine`.
+The options are the same for `parseLine` and `parse`, with the exception of `loadFromString` and `bufferSize`. `loadFromString` only works with `parse` and `bufferSize` can only be specified for `parseLine`.
 
 The following are optional parameters passed in via the third argument as a table.
  - `loadFromString`
@@ -126,7 +125,7 @@ ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
 ## Encoding
 ### `ftcsv.encode(inputTable, delimiter[, options])`
 
-ftcsv can also take a lua table and turn it into a text string to be written to a file. It has two required parameters, an inputTable and a delimiter. You can use it to write out a file like this:
+`ftcsv.encode` takes in a lua table and turns it into a text string that can be written to a file. It has two required parameters, an inputTable and a delimiter. You can use it to write out a file like this:
 ```lua
 local fileOutput = ftcsv.encode(users, ",")
 local file = assert(io.open("ALLUSERS.csv", "w"))
