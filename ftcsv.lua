@@ -135,7 +135,7 @@ local function generateHeadersMetamethod(finalHeaders)
     local rawSetup = "local t, k, _ = ... \
     rawset(t, k, {[ [[%s]] ]=true})"
     rawSetup = rawSetup:format(table.concat(finalHeaders, "]] ]=true, [ [["))
-    luaCompatibility.load(rawSetup)
+    return luaCompatibility.load(rawSetup)
 end
 
 -- main function used to parse
