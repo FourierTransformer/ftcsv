@@ -117,7 +117,8 @@ The following are optional parameters passed in via the third argument as a tabl
  	In the above example, the first field becomes 'a', the second field becomes 'b' and so on.
 
 For all tested examples, take a look in /spec/feature_spec.lua
-Example if you wanted to `loadFromString` and not use `headers`, you could use the following:
+
+The options can be string together. For example if you wanted to `loadFromString` and not use `headers`, you could use the following:
 ```lua
 ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
 ```

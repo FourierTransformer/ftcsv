@@ -488,5 +488,4 @@ describe("csv features", function()
             end
         end
     end
-
 end)
