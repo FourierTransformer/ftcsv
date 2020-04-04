@@ -42,3 +42,30 @@ it("should error out when you want to encode a table and specify a field that do
 
 	assert.has_error(test, "ftcsv: the field 'c' doesn't exist in the inputTable")
 end)
+
+describe("parseLine features small, nonworking buffer size", function()
+    it("should error out when trying to load from string", function()
+        local test = function()
+            local parse = {}
+            for i, line in ftcsv.parseLine("a,b,c\n1,2,3", ",", {loadFromString=true}) do
+                parse[i] = line
+            end
+            return parse
+        end
+        assert.has_error(test, "ftcsv: parseLine currently doesn't support loading from string")
+    end)
+end)
+
+it("should error when dealing with quotes", function()
+	local test = function()
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true})
+	end
+	assert.has_error(test, "ftcsv: can't find closing quote in row 1. Try running with the option ignoreQuotes=true if the source incorrectly uses quotes.")
+end)
+
+it("should error if bufferSize is set when parsing entire files", function()
+	local test = function()
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true, bufferSize=34})
+	end
+	assert.has_error(test, "ftcsv: bufferSize can only be specified using 'parseLine'. When using 'parse', the entire file is read into memory")
+end)
