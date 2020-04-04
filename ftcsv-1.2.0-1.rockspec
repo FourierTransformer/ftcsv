@@ -7,7 +7,7 @@ source = {
 }
 
 description = {
-	summary = "A fast csv library written in pure Lua",
+	summary = "A fast pure lua csv library (parser and encoder)",
 	detailed = [[
    ftcsv is a fast and easy to use csv library for lua. It can read in CSV files,
    do some basic transformations (rename fields) and can create the csv format.
@@ -18,7 +18,7 @@ description = {
    buffered reading of a CSV file.
   ]],
 	homepage = "https://github.com/FourierTransformer/ftcsv",
-	maintainer = "FourierTransformer",
+	maintainer = "Shakil Thakur <shakil.thakur@gmail.com>",
 	license = "MIT"
 }
 
@@ -32,3 +32,4 @@ build = {
 		["ftcsv"] = "ftcsv.lua"
 	},
 }
+
