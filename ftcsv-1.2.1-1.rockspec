@@ -1,9 +1,9 @@
 package = "ftcsv"
-version = "1.2.0-1"
+version = "1.2.1-1"
 
 source = {
 	url = "git://github.com/FourierTransformer/ftcsv.git",
-	tag = "1.2.0"
+	tag = "1.2.1"
 }
 
 description = {
@@ -23,7 +23,7 @@ description = {
 }
 
 dependencies = {
-	"lua >= 5.1, <5.4",
+	"lua >= 5.1",
 }
 
 build = {

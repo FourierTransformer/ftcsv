@@ -1,7 +1,7 @@
 # ftcsv
 [![Build Status](https://travis-ci.org/FourierTransformer/ftcsv.svg?branch=master)](https://travis-ci.org/FourierTransformer/ftcsv) [![Coverage Status](https://coveralls.io/repos/github/FourierTransformer/ftcsv/badge.svg?branch=master)](https://coveralls.io/github/FourierTransformer/ftcsv?branch=master)
 
-ftcsv is a fast csv library written in pure Lua. It's been tested with LuaJIT 2.0/2.1 and Lua 5.1, 5.2, and 5.3
+ftcsv is a fast csv library written in pure Lua. It's been tested with LuaJIT 2.0/2.1 and Lua 5.1, 5.2, 5.3, and 5.4
 
 It features two parsing modes, one for CSVs that can easily be loaded into memory (up to a few hundred MBs depending on the system), and another for loading files using an iterator - useful for manipulating large files or processing during load. It correctly handles most csv (and csv-like) files found in the wild, from varying line endings (Windows, Linux, and OS9), UTF-8 BOM support, and odd delimiters. There are also various options that can tweak how a file is loaded, only grabbing a few fields, renaming fields, and parsing header-less files!
 
