@@ -1,5 +1,5 @@
 # ftcsv
-[![Build Status](https://travis-ci.org/FourierTransformer/ftcsv.svg?branch=master)](https://travis-ci.org/FourierTransformer/ftcsv) [![Coverage Status](https://coveralls.io/repos/github/FourierTransformer/ftcsv/badge.svg?branch=master)](https://coveralls.io/github/FourierTransformer/ftcsv?branch=master)
+[![Run Tests and Code Coverage](https://github.com/FourierTransformer/ftcsv/actions/workflows/test-and-coverage.yml/badge.svg)](https://github.com/FourierTransformer/ftcsv/actions/workflows/test-and-coverage.yml) [![Coverage Status](https://coveralls.io/repos/github/FourierTransformer/ftcsv/badge.svg?branch=master)](https://coveralls.io/github/FourierTransformer/ftcsv?branch=master)
 
 ftcsv is a fast csv library written in pure Lua. It's been tested with LuaJIT 2.0/2.1 and Lua 5.1, 5.2, 5.3, and 5.4
 
