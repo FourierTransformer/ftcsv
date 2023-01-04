@@ -74,3 +74,15 @@ describe("smaller bufferSize than header, but with correct field numbers", funct
         assert.has_error(test, "ftcsv: bufferSize needs to be larger to parse this file")
     end)
 end)
+
+describe("parseLine with options but not bufferSize", function()
+    it("should handle correctness", function()
+        local json = loadFile("spec/json/correctness.json")
+        json = cjson.decode(json)
+    local parse = {}
+    for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", ",", {rename={["Year"] = "Full Year"}}) do
+	parse[i] = line
+    end
+        assert.are.same(#json, #parse)
+    end)
+end)
