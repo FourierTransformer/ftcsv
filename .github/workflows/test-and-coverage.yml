@@ -23,6 +23,7 @@ jobs:
       run: |
         pip install hererocks
         hererocks lua_install -r^ --${{ matrix.test_number }}
+        export PATH=$PATH:$PWD/lua_install/bin
         luarocks install busted
         luarocks install lua-cjson
         luarocks install luacov
