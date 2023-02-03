@@ -318,6 +318,30 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle encoding files (str test)", function()
+		local expected = '"a","b","c","d"\r\n"1","","foo","""quoted"""\r\n'
+		output = ftcsv.encode({
+      			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
+    		}, ',')
+    		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files without quotes (str test)", function()
+		local expected = 'a,b,c,d\r\n1,,foo,"""quoted"""\r\n'
+		output = ftcsv.encode({
+      			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
+    		}, ',', {noQuotes=true})
+    		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files without quotes with certain fields to keep (str test)", function()
+		local expected = "b,c\r\n,foo\r\n"
+		output = ftcsv.encode({
+      			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
+    		}, ',', {noQuotes=true, fieldsToKeep={"b", "c"}})
+    		assert.are.same(expected, output)
+	end)
+
 	it("should handle headers attempting to escape", function()
 		local expected = {}
 		expected[1] = {}
