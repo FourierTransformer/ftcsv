@@ -164,6 +164,21 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle files without headers with an empty header field", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = ""
+		expected[2] = {}
+		expected[2][1] = "diamond"
+		expected[2][2] = "emerald"
+		expected[2][3] = "pearl"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse("apple>banana>\ndiamond>emerald>pearl", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle files without (headers and newlines)", function()
 		local expected = {}
 		expected[1] = {}
@@ -175,6 +190,17 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle files without (headers and newlines) with an empty header field", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = ""
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse("apple>banana>", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle files with quotes and without (headers and newlines)", function()
 		local expected = {}
 		expected[1] = {}
@@ -183,6 +209,17 @@ describe("csv features", function()
 		expected[1][3] = "carrot"
 		local options = {loadFromString=true, headers=false}
 		local actual = ftcsv.parse('"apple">"banana">"carrot"', ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle files with quotes and without (headers and newlines) with an empty header field", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = ""
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse('"apple">"banana">', ">", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -201,6 +238,21 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle files with quotes and without (headers and newlines) with an empty header field", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = ""
+		expected[2] = {}
+		expected[2][1] = "diamond"
+		expected[2][2] = "emerald"
+		expected[2][3] = "pearl"
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse('"apple">"banana">\n"diamond">"emerald">"pearl"', ">", options)
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle files without (headers and newlines) w/newline at end", function()
 		local expected = {}
 		expected[1] = {}
@@ -209,6 +261,17 @@ describe("csv features", function()
 		expected[1][3] = "carrot"
 		local options = {loadFromString=true, headers=false}
 		local actual = ftcsv.parse("apple>banana>carrot\n", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle files without (headers and newlines) w/newline at end with an empty header field", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = ""
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse("apple>banana>\n", ">", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -223,6 +286,17 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle files without (headers and newlines) w/crlf with an empty header field", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = ""
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse("apple>banana>\r\n", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle files without (headers and newlines) w/cr", function()
 		local expected = {}
 		expected[1] = {}
@@ -233,6 +307,18 @@ describe("csv features", function()
 		local actual = ftcsv.parse("apple>banana>carrot\r", ">", options)
 		assert.are.same(expected, actual)
 	end)
+
+	it("should handle files without (headers and newlines) w/cr with an empty header field", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1][1] = "apple"
+		expected[1][2] = "banana"
+		expected[1][3] = ""
+		local options = {loadFromString=true, headers=false}
+		local actual = ftcsv.parse("apple>banana>\r", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
 
 	it("should handle only renaming fields from files without headers", function()
 		local expected = {}
@@ -249,6 +335,21 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle only renaming fields from files without headers with an empty header field", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = "banana"
+		expected[1].c = ""
+		expected[2] = {}
+		expected[2].a = "diamond"
+		expected[2].b = "emerald"
+		expected[2].c = "pearl"
+		local options = {loadFromString=true, headers=false, rename={"a","b","c"}}
+		local actual = ftcsv.parse("apple>banana>\ndiamond>emerald>pearl", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle only renaming fields from files without headers and only keeping a few fields", function()
 		local expected = {}
 		expected[1] = {}
@@ -259,6 +360,19 @@ describe("csv features", function()
 		expected[2].b = "emerald"
 		local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}}
 		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle only renaming fields from files without headers and only keeping a few fields with an empty header field", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = "apple"
+		expected[1].b = ""
+		expected[2] = {}
+		expected[2].a = "diamond"
+		expected[2].b = "emerald"
+		local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}}
+		local actual = ftcsv.parse("apple>>carrot\ndiamond>emerald>pearl", ">", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -316,6 +430,30 @@ describe("csv features", function()
 		local actual = ftcsv.parse(ftcsv.encode(expected, ",", {fieldsToKeep={"A", "B"}}), ",", {loadFromString=true})
 		local expected = ftcsv.parse("A,B\napple,banana", ",", {loadFromString=true})
 		assert.are.same(expected, actual)
+	end)
+
+	it("should handle encoding files (str test)", function()
+		local expected = '"a","b","c","d"\r\n"1","","foo","""quoted"""\r\n'
+		output = ftcsv.encode({
+      			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
+    		}, ',')
+    		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files without quotes (str test)", function()
+		local expected = 'a,b,c,d\r\n1,,foo,"""quoted"""\r\n'
+		output = ftcsv.encode({
+      			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
+    		}, ',', {noQuotes=true})
+    		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files without quotes with certain fields to keep (str test)", function()
+		local expected = "b,c\r\n,foo\r\n"
+		output = ftcsv.encode({
+      			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
+    		}, ',', {noQuotes=true, fieldsToKeep={"b", "c"}})
+    		assert.are.same(expected, output)
 	end)
 
 	it("should handle headers attempting to escape", function()

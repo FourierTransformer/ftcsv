@@ -1,11 +1,11 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.2.0',
+    _VERSION = 'ftcsv 1.3.0',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
         The MIT License (MIT)
 
-        Copyright (c) 2016-2020 Shakil Thakur
+        Copyright (c) 2016-2023 Shakil Thakur
 
         Permission is hereby granted, free of charge, to any person obtaining a copy
         of this software and associated documentation files (the "Software"), to deal
@@ -329,17 +329,17 @@ local function parseString(inputString, i, options)
 end
 
 local function handleHeaders(headerField, options)
-    -- make sure a header isn't empty
-    for _, headerName in ipairs(headerField) do
-        if #headerName == 0 then
-            error('ftcsv: Cannot parse a file which contains empty headers')
-        end
-    end
-
     -- for files where there aren't headers!
     if options.headers == false then
         for j = 1, #headerField do
             headerField[j] = j
+        end
+    else
+        -- make sure a header isn't empty if there are headers
+        for _, headerName in ipairs(headerField) do
+            if #headerName == 0 then
+                error('ftcsv: Cannot parse a file which contains empty headers')
+            end
         end
     end
 
@@ -645,6 +645,17 @@ local function delimitField(field)
     end
 end
 
+local function delimitAndQuoteField(field)
+    field = tostring(field)
+    if field:find('"') then
+        return '"' .. field:gsub('"', '""') .. '"'
+    elseif field:find('[\n,]') then
+        return '"' .. field .. '"'
+    else
+        return field
+    end
+end
+
 local function escapeHeadersForLuaGenerator(headers)
     local escapedHeaders = {}
     for i = 1, #headers do
@@ -658,7 +669,7 @@ local function escapeHeadersForLuaGenerator(headers)
 end
 
 -- a function that compiles some lua code to quickly print out the csv
-local function csvLineGenerator(inputTable, delimiter, headers)
+local function csvLineGenerator(inputTable, delimiter, headers, options)
     local escapedHeaders = escapeHeadersForLuaGenerator(headers)
 
     local outputFunc = [[
@@ -670,11 +681,26 @@ local function csvLineGenerator(inputTable, delimiter, headers)
             delimiter .. [["' .. args.delimitField(args.t[i]["]]) ..
             [["]) .. '"\r\n']]
 
+    if options and options.noQuotes == true then
+        outputFunc = [[
+            local args, i = ...
+            i = i + 1;
+            if i > ]] .. #inputTable .. [[ then return nil end;
+            return i, args.delimitField(args.t[i]["]] ..
+                table.concat(escapedHeaders, [["]) .. ']] ..
+                delimiter .. [[' .. args.delimitField(args.t[i]["]]) ..
+                [["]) .. '\r\n']]
+    end
+
     local arguments = {}
     arguments.t = inputTable
     -- we want to use the same delimitField throughout,
     -- so we're just going to pass it in
-    arguments.delimitField = delimitField
+    if options and options.noQuotes == true then
+        arguments.delimitField = delimitAndQuoteField
+    else
+        arguments.delimitField = delimitField
+    end
 
     return luaCompatibility.load(outputFunc), arguments, 0
 
@@ -688,17 +714,26 @@ local function validateHeaders(headers, inputTable)
     end
 end
 
-local function initializeOutputWithEscapedHeaders(escapedHeaders, delimiter)
+local function initializeOutputWithEscapedHeaders(escapedHeaders, delimiter, options)
     local output = {}
-    output[1] = '"' .. table.concat(escapedHeaders, '"' .. delimiter .. '"') .. '"\r\n'
+    if options and options.noQuotes == true then
+        output[1] = table.concat(escapedHeaders, delimiter) .. '\r\n'
+    else
+        output[1] = '"' .. table.concat(escapedHeaders, '"' .. delimiter .. '"') .. '"\r\n'
+    end
     return output
 end
 
-local function escapeHeadersForOutput(headers)
+local function escapeHeadersForOutput(headers, options)
     local escapedHeaders = {}
+    local delimitField = delimitField
+    if options and options.noQuotes == true then
+        delimitField = delimitAndQuoteField
+    end
     for i = 1, #headers do
         escapedHeaders[i] = delimitField(headers[i])
     end
+
     return escapedHeaders
 end
 
@@ -736,8 +771,8 @@ local function initializeGenerator(inputTable, delimiter, options)
     end
     validateHeaders(headers, inputTable)
 
-    local escapedHeaders = escapeHeadersForOutput(headers)
-    local output = initializeOutputWithEscapedHeaders(escapedHeaders, delimiter)
+    local escapedHeaders = escapeHeadersForOutput(headers, options)
+    local output = initializeOutputWithEscapedHeaders(escapedHeaders, delimiter, options)
     return output, headers
 end
 
@@ -745,7 +780,7 @@ end
 function ftcsv.encode(inputTable, delimiter, options)
     local output, headers = initializeGenerator(inputTable, delimiter, options)
 
-    for i, line in csvLineGenerator(inputTable, delimiter, headers) do
+    for i, line in csvLineGenerator(inputTable, delimiter, headers, options) do
         output[i+1] = line
     end
 
