@@ -329,17 +329,17 @@ local function parseString(inputString, i, options)
 end
 
 local function handleHeaders(headerField, options)
-    -- make sure a header isn't empty
-    for _, headerName in ipairs(headerField) do
-        if #headerName == 0 then
-            error('ftcsv: Cannot parse a file which contains empty headers')
-        end
-    end
-
     -- for files where there aren't headers!
     if options.headers == false then
         for j = 1, #headerField do
             headerField[j] = j
+        end
+    else
+        -- make sure a header isn't empty if there are headers
+        for _, headerName in ipairs(headerField) do
+            if #headerName == 0 then
+                error('ftcsv: Cannot parse a file which contains empty headers')
+            end
         end
     end
 
