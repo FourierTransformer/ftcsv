@@ -143,9 +143,9 @@ file:close()
 	local output = ftcsv.encode(everyUser, ",", {fieldsToKeep={"Name", "Phone", "City"}})
 	```
 
- - `noQuotes`
+ - `onlyRequiredQuotes`
 
-    if `noQuotes` is set to `true`, the output will not include quotes around fields.
+    if `onlyRequiredQuotes` is set to `true`, the output will only include quotes around fields that are quotes, have newlines, or contain the delimter.
 
     ```lua
     local output = ftcsv.encode(everyUser, ",", {noQuotes=true})

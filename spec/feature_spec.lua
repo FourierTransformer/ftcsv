@@ -61,15 +61,15 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
-        it("should handle escaped doublequotes", function()
-                local expected = {}
-                expected[1] = {}
-                expected[1].a = 'A"B""C'
-                expected[1].b = 'A""B"C'
-                expected[1].c = 'A"""B""C'
-                local actual = ftcsv.parse('a;b;c\n"A""B""""C";"A""""B""C";"A""""""B""""C"', ";", {loadFromString=true})
-                assert.are.same(expected, actual)
-        end)
+	it("should handle escaped doublequotes", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = 'A"B""C'
+		expected[1].b = 'A""B"C'
+		expected[1].c = 'A"""B""C'
+		local actual = ftcsv.parse('a;b;c\n"A""B""""C";"A""""B""C";"A""""""B""""C"', ";", {loadFromString=true})
+		assert.are.same(expected, actual)
+	end)
 
 	it("should handle renaming a field", function()
 		local expected = {}
@@ -435,25 +435,41 @@ describe("csv features", function()
 	it("should handle encoding files (str test)", function()
 		local expected = '"a","b","c","d"\r\n"1","","foo","""quoted"""\r\n'
 		output = ftcsv.encode({
-      			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
-    		}, ',')
-    		assert.are.same(expected, output)
+			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
+		}, ',')
+		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files (str test) with other delimiter", function()
+		local expected = '"a">"b">"c">"d"\r\n"1">"">"foo">"""quoted"""\r\n'
+		output = ftcsv.encode({
+			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
+		}, '>')
+		assert.are.same(expected, output)
 	end)
 
 	it("should handle encoding files without quotes (str test)", function()
-		local expected = 'a,b,c,d\r\n1,,foo,"""quoted"""\r\n'
+		local expected = 'a,b,c,d\r\n1,,"fo,o","""quoted"""\r\n'
 		output = ftcsv.encode({
-      			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
-    		}, ',', {noQuotes=true})
-    		assert.are.same(expected, output)
+			{ a = 1, b = '', c = 'fo,o', d = '"quoted"' };
+		}, ',', {onlyRequiredQuotes=true})
+		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files without quotes with other delimiter (str test)", function()
+		local expected = 'a>b>c>d\r\n1>>fo,o>"""quoted"""\r\n'
+		output = ftcsv.encode({
+			{ a = 1, b = '', c = 'fo,o', d = '"quoted"' };
+		}, '>', {onlyRequiredQuotes=true})
+		assert.are.same(expected, output)
 	end)
 
 	it("should handle encoding files without quotes with certain fields to keep (str test)", function()
 		local expected = "b,c\r\n,foo\r\n"
 		output = ftcsv.encode({
-      			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
-    		}, ',', {noQuotes=true, fieldsToKeep={"b", "c"}})
-    		assert.are.same(expected, output)
+			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
+		}, ',', {onlyRequiredQuotes=true, fieldsToKeep={"b", "c"}})
+		assert.are.same(expected, output)
 	end)
 
 	it("should handle headers attempting to escape", function()

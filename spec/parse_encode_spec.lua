@@ -94,7 +94,7 @@ describe("csv encode without quotes", function()
 			local jsonFile = loadFile("spec/json/" .. value .. ".json")
 			local jsonDecode = cjson.decode(jsonFile)
 			-- local parse = staecsv:ftcsv(contents, ",")
-			local reEncodedNoQuotes = ftcsv.parse(ftcsv.encode(jsonDecode, ",", {noQuotes=true}), ",", {loadFromString=true})
+			local reEncodedNoQuotes = ftcsv.parse(ftcsv.encode(jsonDecode, ",", {onlyRequiredQuotes=true}), ",", {loadFromString=true})
 			-- local f = csv.openstring(contents, {separator=",", header=true})
 			-- local parse = {}
 			-- for fields in f:lines() do
