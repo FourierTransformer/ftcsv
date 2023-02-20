@@ -645,15 +645,18 @@ local function delimitField(field)
     end
 end
 
-local function delimitAndQuoteField(field)
-    field = tostring(field)
-    if field:find('"') then
-        return '"' .. field:gsub('"', '""') .. '"'
-    elseif field:find('[\n,]') then
-        return '"' .. field .. '"'
-    else
-        return field
+local function generateDelimitAndQuoteField(delimiter)
+    local generatedFunction = function(field)
+        field = tostring(field)
+        if field:find('"') then
+            return '"' .. field:gsub('"', '""') .. '"'
+        elseif field:find('[\n' .. delimiter .. ']') then
+            return '"' .. field .. '"'
+        else
+            return field
+        end
     end
+    return generatedFunction
 end
 
 local function escapeHeadersForLuaGenerator(headers)
@@ -681,7 +684,7 @@ local function csvLineGenerator(inputTable, delimiter, headers, options)
             delimiter .. [["' .. args.delimitField(args.t[i]["]]) ..
             [["]) .. '"\r\n']]
 
-    if options and options.noQuotes == true then
+    if options and options.onlyRequiredQuotes == true then
         outputFunc = [[
             local args, i = ...
             i = i + 1;
@@ -696,8 +699,8 @@ local function csvLineGenerator(inputTable, delimiter, headers, options)
     arguments.t = inputTable
     -- we want to use the same delimitField throughout,
     -- so we're just going to pass it in
-    if options and options.noQuotes == true then
-        arguments.delimitField = delimitAndQuoteField
+    if options and options.onlyRequiredQuotes == true then
+        arguments.delimitField = generateDelimitAndQuoteField(delimiter)
     else
         arguments.delimitField = delimitField
     end
@@ -716,7 +719,7 @@ end
 
 local function initializeOutputWithEscapedHeaders(escapedHeaders, delimiter, options)
     local output = {}
-    if options and options.noQuotes == true then
+    if options and options.onlyRequiredQuotes == true then
         output[1] = table.concat(escapedHeaders, delimiter) .. '\r\n'
     else
         output[1] = '"' .. table.concat(escapedHeaders, '"' .. delimiter .. '"') .. '"\r\n'
@@ -724,11 +727,11 @@ local function initializeOutputWithEscapedHeaders(escapedHeaders, delimiter, opt
     return output
 end
 
-local function escapeHeadersForOutput(headers, options)
+local function escapeHeadersForOutput(headers, delimiter, options)
     local escapedHeaders = {}
     local delimitField = delimitField
-    if options and options.noQuotes == true then
-        delimitField = delimitAndQuoteField
+    if options and options.onlyRequiredQuotes == true then
+        delimitField = generateDelimitAndQuoteField(delimiter)
     end
     for i = 1, #headers do
         escapedHeaders[i] = delimitField(headers[i])
@@ -771,7 +774,7 @@ local function initializeGenerator(inputTable, delimiter, options)
     end
     validateHeaders(headers, inputTable)
 
-    local escapedHeaders = escapeHeadersForOutput(headers, options)
+    local escapedHeaders = escapeHeadersForOutput(headers, delimiter, options)
     local output = initializeOutputWithEscapedHeaders(escapedHeaders, delimiter, options)
     return output, headers
 end
