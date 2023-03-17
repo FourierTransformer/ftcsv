@@ -14,7 +14,7 @@ describe("parseLine features small, working buffer size", function()
         local json = loadFile("spec/json/correctness.json")
         json = cjson.decode(json)
         local parse = {}
-        for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", ",", {bufferSize=52}) do
+        for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", {bufferSize=52}) do
             assert.are.same(json[i], line)
             parse[i] = line
         end
@@ -27,7 +27,7 @@ describe("parseLine features small, nonworking buffer size", function()
     it("should handle correctness", function()
         local test = function()
             local parse = {}
-            for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", ",", {bufferSize=63}) do
+            for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", {bufferSize=63}) do
                 parse[i] = line
             end
             return parse
@@ -40,7 +40,7 @@ describe("parseLine features smaller, nonworking buffer size", function()
     it("should handle correctness", function()
         local test = function()
             local parse = {}
-            for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", ",", {bufferSize=50}) do
+            for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", {bufferSize=50}) do
                 parse[i] = line
             end
             return parse
@@ -53,7 +53,7 @@ describe("smaller bufferSize than header and incorrect number of fields", functi
     it("should handle correctness", function()
         local test = function()
             local parse = {}
-            for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", ",", {bufferSize=23}) do
+            for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", {bufferSize=23}) do
                 parse[i] = line
             end
             return parse
@@ -66,7 +66,7 @@ describe("smaller bufferSize than header, but with correct field numbers", funct
     it("should handle correctness", function()
         local test = function()
             local parse = {}
-            for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", ",", {bufferSize=30}) do
+            for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", {bufferSize=30}) do
                 parse[i] = line
             end
             return parse
@@ -80,7 +80,7 @@ describe("parseLine with options but not bufferSize", function()
         local json = loadFile("spec/json/correctness.json")
         json = cjson.decode(json)
     local parse = {}
-    for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", ",", {rename={["Year"] = "Full Year"}}) do
+    for i, line in ftcsv.parseLine("spec/csvs/correctness.csv", {rename={["Year"] = "Full Year"}}) do
 	parse[i] = line
     end
         assert.are.same(#json, #parse)

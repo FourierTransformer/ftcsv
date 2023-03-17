@@ -36,7 +36,7 @@ describe("csv decode", function()
 		it("should handle " .. value, function()
 			local json = loadFile("spec/json/" .. value .. ".json")
 			json = cjson.decode(json)
-			local parse = ftcsv.parse("spec/csvs/" .. value .. ".csv", ",")
+			local parse = ftcsv.parse("spec/csvs/" .. value .. ".csv")
 			assert.are.same(#json, #parse)
 			assert.are.same(json, parse)
 		end)
@@ -49,7 +49,7 @@ describe("csv parseLine decode", function()
 			local json = loadFile("spec/json/" .. value .. ".json")
 			json = cjson.decode(json)
 			local parse = {}
-			for i, v in ftcsv.parseLine("spec/csvs/" .. value .. ".csv", ",") do
+			for i, v in ftcsv.parseLine("spec/csvs/" .. value .. ".csv") do
 				parse[i] = v
 				assert.are.same(json[i], v)
 			end
@@ -65,7 +65,7 @@ describe("csv decode from string", function()
 			local contents = loadFile("spec/csvs/" .. value .. ".csv")
 			local json = loadFile("spec/json/" .. value .. ".json")
 			json = cjson.decode(json)
-			local parse = ftcsv.parse(contents, ",", {loadFromString=true})
+			local parse = ftcsv.parse(contents, {loadFromString=true})
 			assert.are.same(json, parse)
 		end)
 	end
@@ -76,8 +76,8 @@ describe("csv encode", function()
 		it("should handle " .. value, function()
 			local jsonFile = loadFile("spec/json/" .. value .. ".json")
 			local jsonDecode = cjson.decode(jsonFile)
-			-- local parse = staecsv:ftcsv(contents, ",")
-			local reEncoded = ftcsv.parse(ftcsv.encode(jsonDecode, ","), ",", {loadFromString=true})
+			-- local parse = staecsv:ftcsv(contents)
+			local reEncoded = ftcsv.parse(ftcsv.encode(jsonDecode), {loadFromString=true})
 			-- local f = csv.openstring(contents, {separator=",", header=true})
 			-- local parse = {}
 			-- for fields in f:lines() do
@@ -94,7 +94,7 @@ describe("csv encode without quotes", function()
 			local jsonFile = loadFile("spec/json/" .. value .. ".json")
 			local jsonDecode = cjson.decode(jsonFile)
 			-- local parse = staecsv:ftcsv(contents, ",")
-			local reEncodedNoQuotes = ftcsv.parse(ftcsv.encode(jsonDecode, ",", {onlyRequiredQuotes=true}), ",", {loadFromString=true})
+			local reEncodedNoQuotes = ftcsv.parse(ftcsv.encode(jsonDecode, {onlyRequiredQuotes=true}), {loadFromString=true})
 			-- local f = csv.openstring(contents, {separator=",", header=true})
 			-- local parse = {}
 			-- for fields in f:lines() do
