@@ -7,7 +7,7 @@ describe("csv features", function()
 		expected[1].a = "apple"
 		expected[1].b = "banana"
 		expected[1].c = "carrot"
-		local actual = ftcsv.parse("a,b,c\napple,banana,carrot", ",", {loadFromString=true})
+		local actual = ftcsv.parse("a,b,c\napple,banana,carrot", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -17,7 +17,7 @@ describe("csv features", function()
 		expected[1].a = "apple"
 		expected[1].b = "banana"
 		expected[1].c = "carrot"
-		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", ",", {loadFromString=true})
+		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -27,7 +27,7 @@ describe("csv features", function()
 		expected[1].a = "apple"
 		expected[1].b = "banana"
 		expected[1].c = "carrot"
-		local actual = ftcsv.parse("a,b,c\rapple,banana,carrot", ",", {loadFromString=true})
+		local actual = ftcsv.parse("a,b,c\rapple,banana,carrot", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -37,7 +37,7 @@ describe("csv features", function()
 		expected[1].a = "apple"
 		expected[1].b = "banana"
 		expected[1].c = "carrot"
-		local actual = ftcsv.parse('"a","b","c"\n"apple","banana","carrot"', ",", {loadFromString=true})
+		local actual = ftcsv.parse('"a","b","c"\n"apple","banana","carrot"', {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -47,7 +47,7 @@ describe("csv features", function()
 		expected[1].a = '"apple"'
 		expected[1].b = '"banana"'
 		expected[1].c = '"carrot"'
-		local actual = ftcsv.parse('"a","b","c"\n"""apple""","""banana""","""carrot"""', ",", {loadFromString=true})
+		local actual = ftcsv.parse('"a","b","c"\n"""apple""","""banana""","""carrot"""', {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -57,7 +57,7 @@ describe("csv features", function()
 		expected[1].a = '"apple"'
 		expected[1].b = 'banana'
 		expected[1].c = '"carrot"'
-		local actual = ftcsv.parse('"a","b","c"\n"""apple""","banana","""carrot"""', ",", {loadFromString=true})
+		local actual = ftcsv.parse('"a","b","c"\n"""apple""","banana","""carrot"""', {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -67,7 +67,7 @@ describe("csv features", function()
 		expected[1].a = 'A"B""C'
 		expected[1].b = 'A""B"C'
 		expected[1].c = 'A"""B""C'
-		local actual = ftcsv.parse('a;b;c\n"A""B""""C";"A""""B""C";"A""""""B""""C"', ";", {loadFromString=true})
+		local actual = ftcsv.parse('a;b;c\n"A""B""""C";"A""""B""C";"A""""""B""""C"', {loadFromString=true, delimiter=";"})
 		assert.are.same(expected, actual)
 	end)
 
@@ -77,7 +77,7 @@ describe("csv features", function()
 		expected[1].d = "apple"
 		expected[1].b = "banana"
 		expected[1].c = "carrot"
-		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", ",", {loadFromString=true, rename={["a"] = "d"}})
+		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", {loadFromString=true, rename={["a"] = "d"}})
 		assert.are.same(expected, actual)
 	end)
 
@@ -88,14 +88,14 @@ describe("csv features", function()
 		expected[1].e = "banana"
 		expected[1].f = "carrot"
 		local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "f"}}
-		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", ",", options)
+		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", options)
 		assert.are.same(expected, actual)
 	end)
 
 	it("should return a table with column headers", function()
 		local expected = { 'd', 'e', 'f' }
 		local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "f"}}
-		local _, actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", ",", options)
+		local _, actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -105,7 +105,7 @@ describe("csv features", function()
 		expected[1].d = "apple"
 		expected[1].e = "carrot"
 		local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "e"}}
-		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", ",", options)
+		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -115,7 +115,7 @@ describe("csv features", function()
 		expected[1].d = "apple"
 		expected[1].e = "carrot"
 		local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "e"}}
-		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", ",", options)
+		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -125,7 +125,7 @@ describe("csv features", function()
 		expected[1].a = "apple"
 		expected[1].b = "banana"
 		local options = {loadFromString=true, fieldsToKeep={"a","b"}}
-		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", ",", options)
+		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -135,7 +135,7 @@ describe("csv features", function()
 		expected[1].a = "apple"
 		expected[1].b = "carrot"
 		local options = {loadFromString=true, fieldsToKeep={"a","b"}, rename={["c"] = "b"}}
-		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", ",", options)
+		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -145,7 +145,7 @@ describe("csv features", function()
 		expected[1].a = "apple"
 		expected[1].f = "carrot"
 		local options = {loadFromString=true, fieldsToKeep={"a","f"}, rename={["c"] = "f"}}
-		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", ",", options)
+		local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -159,8 +159,8 @@ describe("csv features", function()
 		expected[2][1] = "diamond"
 		expected[2][2] = "emerald"
 		expected[2][3] = "pearl"
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -174,8 +174,8 @@ describe("csv features", function()
 		expected[2][1] = "diamond"
 		expected[2][2] = "emerald"
 		expected[2][3] = "pearl"
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>\ndiamond>emerald>pearl", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>\ndiamond>emerald>pearl", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -185,8 +185,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = "carrot"
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>carrot", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>carrot", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -196,8 +196,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = ""
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -207,8 +207,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = "carrot"
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse('"apple">"banana">"carrot"', ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse('"apple">"banana">"carrot"', options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -218,8 +218,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = ""
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse('"apple">"banana">', ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse('"apple">"banana">', options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -233,8 +233,8 @@ describe("csv features", function()
 		expected[2][1] = "diamond"
 		expected[2][2] = "emerald"
 		expected[2][3] = "pearl"
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse('"apple">"banana">"carrot"\n"diamond">"emerald">"pearl"', ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse('"apple">"banana">"carrot"\n"diamond">"emerald">"pearl"', options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -248,8 +248,8 @@ describe("csv features", function()
 		expected[2][1] = "diamond"
 		expected[2][2] = "emerald"
 		expected[2][3] = "pearl"
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse('"apple">"banana">\n"diamond">"emerald">"pearl"', ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse('"apple">"banana">\n"diamond">"emerald">"pearl"', options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -259,8 +259,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = "carrot"
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>carrot\n", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>carrot\n", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -270,8 +270,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = ""
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>\n", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>\n", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -281,8 +281,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = "carrot"
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>carrot\r\n", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>carrot\r\n", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -292,8 +292,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = ""
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>\r\n", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>\r\n", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -303,8 +303,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = "carrot"
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>carrot\r", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>carrot\r", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -314,8 +314,8 @@ describe("csv features", function()
 		expected[1][1] = "apple"
 		expected[1][2] = "banana"
 		expected[1][3] = ""
-		local options = {loadFromString=true, headers=false}
-		local actual = ftcsv.parse("apple>banana>\r", ">", options)
+		local options = {loadFromString=true, headers=false, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>\r", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -330,8 +330,8 @@ describe("csv features", function()
 		expected[2].a = "diamond"
 		expected[2].b = "emerald"
 		expected[2].c = "pearl"
-		local options = {loadFromString=true, headers=false, rename={"a","b","c"}}
-		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		local options = {loadFromString=true, headers=false, rename={"a","b","c"}, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -345,8 +345,8 @@ describe("csv features", function()
 		expected[2].a = "diamond"
 		expected[2].b = "emerald"
 		expected[2].c = "pearl"
-		local options = {loadFromString=true, headers=false, rename={"a","b","c"}}
-		local actual = ftcsv.parse("apple>banana>\ndiamond>emerald>pearl", ">", options)
+		local options = {loadFromString=true, headers=false, rename={"a","b","c"}, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>\ndiamond>emerald>pearl", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -358,8 +358,8 @@ describe("csv features", function()
 		expected[2] = {}
 		expected[2].a = "diamond"
 		expected[2].b = "emerald"
-		local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}}
-		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -371,8 +371,8 @@ describe("csv features", function()
 		expected[2] = {}
 		expected[2].a = "diamond"
 		expected[2].b = "emerald"
-		local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}}
-		local actual = ftcsv.parse("apple>>carrot\ndiamond>emerald>pearl", ">", options)
+		local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}, delimiter=">"}
+		local actual = ftcsv.parse("apple>>carrot\ndiamond>emerald>pearl", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -384,8 +384,8 @@ describe("csv features", function()
 		expected[2] = {}
 		expected[2].a = "diamond"
 		expected[2].b = "emerald"
-		local options = {loadFromString=true, headers=false, rename={"a","b"}, fieldsToKeep={"a","b"}}
-		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		local options = {loadFromString=true, headers=false, rename={"a","b"}, fieldsToKeep={"a","b"}, delimiter=">"}
+		local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
 		assert.are.same(expected, actual)
 	end)
 
@@ -395,7 +395,7 @@ describe("csv features", function()
 		expected[1].A = "apple"
 		expected[1].B = "banana"
 		expected[1].C = "carrot"
-		local actual = ftcsv.parse("a,b,c\napple,banana,carrot", ",", {loadFromString=true, headerFunc=string.upper})
+		local actual = ftcsv.parse("a,b,c\napple,banana,carrot", {loadFromString=true, headerFunc=string.upper})
 		assert.are.same(expected, actual)
 	end)
 
@@ -405,8 +405,8 @@ describe("csv features", function()
 		expected[1].A = "apple"
 		expected[1].B = "banana"
 		expected[1].C = "carrot"
-		local actual = ftcsv.parse(ftcsv.encode(expected, ","), ",", {loadFromString=true})
-		local expected = ftcsv.parse("A,B,C\napple,banana,carrot", ",", {loadFromString=true})
+		local actual = ftcsv.parse(ftcsv.encode(expected), {loadFromString=true})
+		local expected = ftcsv.parse("A,B,C\napple,banana,carrot", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -416,8 +416,8 @@ describe("csv features", function()
 		expected[1].A = "apple"
 		expected[1].B = "banana"
 		expected[1].C = "carrot"
-		local actual = ftcsv.parse(ftcsv.encode(expected, ">"), ">", {loadFromString=true})
-		local expected = ftcsv.parse("A,B,C\napple,banana,carrot", ",", {loadFromString=true})
+		local actual = ftcsv.parse(ftcsv.encode(expected, {delimiter=">"}), {loadFromString=true, delimiter=">"})
+		local expected = ftcsv.parse("A,B,C\napple,banana,carrot", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -427,8 +427,8 @@ describe("csv features", function()
 		expected[1].A = "apple"
 		expected[1].B = "banana"
 		expected[1].C = "carrot"
-		local actual = ftcsv.parse(ftcsv.encode(expected, ",", {fieldsToKeep={"A", "B"}}), ",", {loadFromString=true})
-		local expected = ftcsv.parse("A,B\napple,banana", ",", {loadFromString=true})
+		local actual = ftcsv.parse(ftcsv.encode(expected, {fieldsToKeep={"A", "B"}}), {loadFromString=true})
+		local expected = ftcsv.parse("A,B\napple,banana", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -436,7 +436,7 @@ describe("csv features", function()
 		local expected = '"a","b","c","d"\r\n"1","","foo","""quoted"""\r\n'
 		output = ftcsv.encode({
 			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
-		}, ',')
+		})
 		assert.are.same(expected, output)
 	end)
 
@@ -452,7 +452,7 @@ describe("csv features", function()
 		local expected = 'a,b,c,d\r\n1,,"fo,o","""quoted"""\r\n'
 		output = ftcsv.encode({
 			{ a = 1, b = '', c = 'fo,o', d = '"quoted"' };
-		}, ',', {onlyRequiredQuotes=true})
+		}, {onlyRequiredQuotes=true})
 		assert.are.same(expected, output)
 	end)
 
@@ -460,7 +460,7 @@ describe("csv features", function()
 		local expected = 'a>b>c>d\r\n1>>fo,o>"""quoted"""\r\n'
 		output = ftcsv.encode({
 			{ a = 1, b = '', c = 'fo,o', d = '"quoted"' };
-		}, '>', {onlyRequiredQuotes=true})
+		}, {onlyRequiredQuotes=true, delimiter=">"})
 		assert.are.same(expected, output)
 	end)
 
@@ -468,7 +468,7 @@ describe("csv features", function()
 		local expected = "b,c\r\n,foo\r\n"
 		output = ftcsv.encode({
 			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
-		}, ',', {onlyRequiredQuotes=true, fieldsToKeep={"b", "c"}})
+		}, {onlyRequiredQuotes=true, fieldsToKeep={"b", "c"}})
 		assert.are.same(expected, output)
 	end)
 
@@ -478,7 +478,7 @@ describe("csv features", function()
 		expected[1]["]] print('hello')"] = "apple"
 		expected[1].b = "banana"
 		expected[1].c = "carrot"
-		local actual = ftcsv.parse("]] print('hello'),b,c\napple,banana,carrot", ",", {loadFromString=true})
+		local actual = ftcsv.parse("]] print('hello'),b,c\napple,banana,carrot", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -488,7 +488,7 @@ describe("csv features", function()
 		expected[1].a = '"apple'
 		expected[1].b = "banana"
 		expected[1].c = "carrot"
-		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true, ignoreQuotes=true})
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', {loadFromString=true, ignoreQuotes=true})
 		assert.are.same(expected, actual)
 	end)
 

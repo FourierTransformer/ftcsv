@@ -397,9 +397,6 @@ local function initializeInputFromStringOrFile(inputFile, options, amount)
 end
 
 local function parseOptions(delimiter, options, fromParseLine)
-    -- delimiter MUST be one character
-    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
-
     local fieldsToKeep = nil
 
     if options then
@@ -538,7 +535,10 @@ local function parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsT
 end
 
 -- runs the show!
-function ftcsv.parse(inputFile, delimiter, options)
+function ftcsv.parse(inputFile, options)
+    local delimiter = options.delimiter or "," -- delimiter MUST be one character
+    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
+
     local options, fieldsToKeep = parseOptions(delimiter, options, false)
 
     local inputString = initializeInputFromStringOrFile(inputFile, options, "*all")
@@ -572,7 +572,10 @@ local function initializeInputFile(inputString, options)
     return initializeInputFromStringOrFile(inputString, options, options.bufferSize)
 end
 
-function ftcsv.parseLine(inputFile, delimiter, userOptions)
+function ftcsv.parseLine(inputFile, userOptions)
+    local delimiter = userOptions.delimiter or "," -- delimiter MUST be one character
+    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
+
     local options, fieldsToKeep = parseOptions(delimiter, userOptions, true)
     local inputString, file = initializeInputFile(inputFile, options)
 
@@ -765,9 +768,6 @@ local function getHeadersFromOptions(options)
 end
 
 local function initializeGenerator(inputTable, delimiter, options)
-    -- delimiter MUST be one character
-    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
-
     local headers = getHeadersFromOptions(options)
     if headers == nil then
         headers = extractHeadersFromTable(inputTable)
@@ -780,7 +780,10 @@ local function initializeGenerator(inputTable, delimiter, options)
 end
 
 -- works really quickly with luajit-2.1, because table.concat life
-function ftcsv.encode(inputTable, delimiter, options)
+function ftcsv.encode(inputTable, options)
+    local delimiter = options.delimiter or "," -- delimiter MUST be one character
+    assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
+
     local output, headers = initializeGenerator(inputTable, delimiter, options)
 
     for i, line in csvLineGenerator(inputTable, delimiter, headers, options) do

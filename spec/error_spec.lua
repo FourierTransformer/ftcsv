@@ -14,7 +14,7 @@ describe("csv decode error", function()
 	for _, value in ipairs(files) do
 		it("should error out " .. value[1], function()
 			local test = function()
-				ftcsv.parse("spec/bad_csvs/" .. value[1] .. ".csv", ",")
+				ftcsv.parse("spec/bad_csvs/" .. value[1] .. ".csv")
 			end
 			assert.has_error(test, value[2])
 		end)
@@ -23,8 +23,8 @@ end)
 
 it("should error out for fieldsToKeep if no headers and no renaming takes place", function()
 	local test = function()
-		local options = {loadFromString=true, headers=false, fieldsToKeep={1, 2}}
-		ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+		local options = {loadFromString=true, headers=false, fieldsToKeep={1, 2}, delimiter=">"}
+		ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
 	end
 	assert.has_error(test, "ftcsv: fieldsToKeep only works with header-less files when using the 'rename' functionality")
 end)
@@ -37,7 +37,7 @@ it("should error out when you want to encode a table and specify a field that do
 	}
 
 	local test = function()
-		ftcsv.encode(encodeThis, ">", {fieldsToKeep={"c"}})
+		ftcsv.encode(encodeThis, {fieldsToKeep={"c"}, delimiter=">"})
 	end
 
 	assert.has_error(test, "ftcsv: the field 'c' doesn't exist in the inputTable")
@@ -47,7 +47,7 @@ describe("parseLine features small, nonworking buffer size", function()
     it("should error out when trying to load from string", function()
         local test = function()
             local parse = {}
-            for i, line in ftcsv.parseLine("a,b,c\n1,2,3", ",", {loadFromString=true}) do
+            for i, line in ftcsv.parseLine("a,b,c\n1,2,3", {loadFromString=true}) do
                 parse[i] = line
             end
             return parse
@@ -58,14 +58,14 @@ end)
 
 it("should error when dealing with quotes", function()
 	local test = function()
-		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true})
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', {loadFromString=true})
 	end
 	assert.has_error(test, "ftcsv: can't find closing quote in row 1. Try running with the option ignoreQuotes=true if the source incorrectly uses quotes.")
 end)
 
 it("should error if bufferSize is set when parsing entire files", function()
 	local test = function()
-		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true, bufferSize=34})
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', {loadFromString=true, bufferSize=34})
 	end
 	assert.has_error(test, "ftcsv: bufferSize can only be specified using 'parseLine'. When using 'parse', the entire file is read into memory")
 end)

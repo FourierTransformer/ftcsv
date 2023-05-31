@@ -29,7 +29,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -61,7 +61,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "f"}}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -92,7 +92,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "e"}}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -123,7 +123,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, fieldsToKeep={"a", "b"}}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -154,7 +154,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, rename={["c"] = "b"}, fieldsToKeep={"a","b"}}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -185,7 +185,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, rename={["c"] = "f"}, fieldsToKeep={"a","f"}}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -217,7 +217,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, headerFunc=string.upper}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -248,7 +248,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, rename={["c"] = "f"}, fieldsToKeep={"A","F"}, headerFunc=string.upper}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -278,7 +278,7 @@ describe("csv features", function()
                     end
 
                     local options = {loadFromString=true}
-                    local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                    local actual, actualHeaders = ftcsv.parse(defaultString, options)
                     assert.are.same(expected, actual)
                     assert.are.same(expectedHeaders, actualHeaders)
                 end)
@@ -315,7 +315,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, headers=false}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -347,7 +347,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, headers=false}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -383,7 +383,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, headers=false, rename={"a","b","c"}}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -417,7 +417,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -451,7 +451,7 @@ describe("csv features", function()
                         end
 
                         local options = {loadFromString=true, headers=false, rename={"a","b"}, fieldsToKeep={"a","b"}}
-                        local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                        local actual, actualHeaders = ftcsv.parse(defaultString, options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
                     end)
@@ -481,7 +481,7 @@ describe("csv features", function()
                     end
 
                     local options = {loadFromString=true, ignoreQuotes=true}
-                    local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
+                    local actual, actualHeaders = ftcsv.parse(defaultString, options)
                     assert.are.same(expected, actual)
                     assert.are.same(expectedHeaders, actualHeaders)
                 end)
