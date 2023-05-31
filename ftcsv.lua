@@ -396,6 +396,22 @@ local function initializeInputFromStringOrFile(inputFile, options, amount)
     return inputString, file
 end
 
+local function determineArgumentOrder(delimiter, options)
+    -- backwards compatibile layer
+    if type(delimiter) == "string" then
+        return delimiter, options
+
+    -- the new format for parseLine
+    elseif type(delimiter) == "table" then
+        local realDelimiter = delimiter.delimiter or ","
+        return realDelimiter, delimiter
+
+    -- if nothing is specified, assume "," delimited and call it a day!
+    else
+        return ",", nil
+    end
+end
+
 local function parseOptions(delimiter, options, fromParseLine)
     -- delimiter MUST be one character
     assert(#delimiter == 1 and type(delimiter) == "string", "the delimiter must be of string type and exactly one character")
@@ -539,11 +555,13 @@ end
 
 -- runs the show!
 function ftcsv.parse(inputFile, delimiter, options)
-    local options, fieldsToKeep = parseOptions(delimiter, options, false)
+    local realDelimiter, realOptions = determineArgumentOrder(delimiter, options)
 
-    local inputString = initializeInputFromStringOrFile(inputFile, options, "*all")
+    local parsedOptions, fieldsToKeep = parseOptions(realDelimiter, realOptions, false)
 
-    local endOfHeaders, parserArgs, finalHeaders = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep, true)
+    local inputString = initializeInputFromStringOrFile(inputFile, parsedOptions, "*all")
+
+    local endOfHeaders, parserArgs, finalHeaders = parseHeadersAndSetupArgs(inputString, realDelimiter, parsedOptions, fieldsToKeep, true)
 
     local output = parseString(inputString, endOfHeaders, parserArgs)
 
