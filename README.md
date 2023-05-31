@@ -37,7 +37,7 @@ If specifying `bufferSize` there are a couple of things to remember:
 Parsing through a csv file:
 ```lua
 local ftcsv = require("ftcsv")
-for zipcode in ftcsv.parseLine("free-zipcode-database.csv", ",") do
+for index, zipcode in ftcsv.parseLine("free-zipcode-database.csv", ",") do
     print(zipcode.Zipcode)
     print(zipcode.State)
 end
