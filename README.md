@@ -17,16 +17,16 @@ luarocks install ftcsv
 There are two main parsing methods: `ftcv.parse` and `ftcsv.parseLine`.
 `ftcsv.parse` loads the entire file and parses it, while `ftcsv.parseLine` is an iterator that parses one line at a time.
 
-### `ftcsv.parse(fileName, delimiter [, options])`
-`ftcsv.parse` will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data and a lua table containing the column headers. It has only two required parameters - a file name and delimiter (limited to one character). A few optional parameters can be passed in via a table (examples below).
+### `ftcsv.parse(fileName, [, options])`
+`ftcsv.parse` will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data and a lua table containing the column headers. It has only one required parameter - the file name. A few optional parameters can be passed in via a table (examples below).
 
 Just loading a csv file:
 ```lua
 local ftcsv = require('ftcsv')
-local zipcodes, headers = ftcsv.parse("free-zipcode-database.csv", ",")
+local zipcodes, headers = ftcsv.parse("free-zipcode-database.csv")
 ```
 
-### `ftcsv.parseLine(fileName, delimiter, [, options])`
+### `ftcsv.parseLine(fileName, [, options])`
 `ftcsv.parseLine` will open a file and read `options.bufferSize` bytes of the file. `bufferSize` defaults to 2^16 bytes (which provides the fastest parsing on most unix-based systems), or can be specified in the options. `ftcsv.parseLine` is an iterator and returns one line at a time. When all the lines in the buffer are read, it will read in another `bufferSize` bytes of a file and repeat the process until the entire file has been read.
 
 If specifying `bufferSize` there are a couple of things to remember:
@@ -37,7 +37,7 @@ If specifying `bufferSize` there are a couple of things to remember:
 Parsing through a csv file:
 ```lua
 local ftcsv = require("ftcsv")
-for index, zipcode in ftcsv.parseLine("free-zipcode-database.csv", ",") do
+for index, zipcode in ftcsv.parseLine("free-zipcode-database.csv") do
     print(zipcode.Zipcode)
     print(zipcode.State)
 end
@@ -48,11 +48,18 @@ end
 The options are the same for `parseLine` and `parse`, with the exception of `loadFromString` and `bufferSize`. `loadFromString` only works with `parse` and `bufferSize` can only be specified for `parseLine`.
 
 The following are optional parameters passed in via the third argument as a table.
+ - `delimeter`
+
+   If your file doesn't use the comma character as the delimiter, you can specify your own. It is limited to one character and defaults to `,`
+   ```lua
+   ftcsv.parse("a>b>c\r\n1,2,3", {loadFromString=true, delimiter=">"})
+   ```
+
  - `loadFromString`
 
  	If you want to load a csv from a string instead of a file, set `loadFromString` to `true` (default: `false`)
  	```lua
-	ftcsv.parse("a,b,c\r\n1,2,3", ",", {loadFromString=true})
+	ftcsv.parse("a,b,c\r\n1,2,3", {loadFromString=true})
  	```
 
  - `rename`
@@ -63,7 +70,7 @@ The following are optional parameters passed in via the third argument as a tabl
 
  	```lua
  	local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "f"}}
-	local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", ",", options)
+	local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", options)
  	```
 
  - `fieldsToKeep`
@@ -74,7 +81,7 @@ The following are optional parameters passed in via the third argument as a tabl
 
  	```lua
 	local options = {loadFromString=true, fieldsToKeep={"a","f"}, rename={["c"] = "f"}}
-	local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", ",", options)
+	local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", options)
  	```
 
  	Also Note: If you apply a function to the headers via headerFunc, and want to select fields from fieldsToKeep, you need to have what the post-modified header would be in fieldsToKeep.
@@ -85,7 +92,7 @@ The following are optional parameters passed in via the third argument as a tabl
 	
 	```lua
 	local options = {loadFromString=true, ignoreQuotes=true}
-	local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", options)
+	local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', options)
 	```
 
  - `headerFunc`
@@ -95,7 +102,7 @@ The following are optional parameters passed in via the third argument as a tabl
  	Ex: making all fields uppercase
  	```lua
  	local options = {loadFromString=true, headerFunc=string.upper}
-	local actual = ftcsv.parse("a,b,c\napple,banana,carrot", ",", options)
+	local actual = ftcsv.parse("a,b,c\napple,banana,carrot", options)
  	```
 
  - `headers`
@@ -103,15 +110,15 @@ The following are optional parameters passed in via the third argument as a tabl
  	Set `headers` to `false` if the file you are reading doesn't have any headers. This will cause ftcsv to create indexed tables rather than a key-value tables for the output.
 
  	```lua
-	local options = {loadFromString=true, headers=false}
-	local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+	local options = {loadFromString=true, headers=false, delimiter=">"}
+	local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
  	```
 
  	Note: Header-less files can still use the `rename` option and after a field has been renamed, it can specified as a field to keep. The `rename` syntax changes a little bit:
 
  	```lua
-	local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}}
-	local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", ">", options)
+	local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}, delimiter=">"}
+	local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
  	```
 
  	In the above example, the first field becomes 'a', the second field becomes 'b' and so on.
@@ -120,7 +127,7 @@ For all tested examples, take a look in /spec/feature_spec.lua
 
 The options can be string together. For example if you wanted to `loadFromString` and not use `headers`, you could use the following:
 ```lua
-ftcsv.parse("apple,banana,carrot", ",", {loadFromString=true, headers=false})
+ftcsv.parse("apple,banana,carrot", {loadFromString=true, headers=false})
 ```
 
 ## Encoding
@@ -184,7 +191,7 @@ NOTE: times are measured using `os.clock()`, so they are in CPU seconds. Each te
 Benchmarks were run under ftcsv 1.2.0
 
 ## Performance
-I did some basic testing and found that in lua, if you want to iterate over a string character-by-character and compare chars, `string.byte` performs faster than `string.sub`. As such, ftcsv iterates over the whole file and does byte compares to find quotes and delimiters and then generates a table from it. When using vanilla lua, it proved faster to use `string.find` instead of iterating character by character (which is faster in LuaJIT), so ftcsv accounts for that and will perform the fastest option that is availble. If you have thoughts on how to improve performance (either big picture or specifically within the code), create a GitHub issue - I'd love to hear about it!
+I did some basic testing and found that in lua, if you want to iterate over a string character-by-character and compare chars, `string.byte` performs faster than `string.sub`. As such, ftcsv iterates over the whole file and does byte compares to find quotes and delimiters and then generates a table from it. When using vanilla lua, it proved faster to use `string.find` instead of iterating character by character (which is faster in LuaJIT), so ftcsv accounts for that and will perform the fastest option that is available. If you have thoughts on how to improve performance (either big picture or specifically within the code), create a GitHub issue - I'd love to hear about it!
 
 
 ## Contributing
@@ -199,6 +206,16 @@ Feel free to create a new issue for any bugs you've found or help you need. If y
  7. Wait for review
  8. Enjoy the changes made!
 
+
+## Delimiter no longer required as of 1.4.0!
+Starting with version 1.4.0, the delimiter no longer required as the second argument. **But don't worry,** ftcsv remains backwards compatible! We check the argument types and adjust parsing as necessary. There is no intention to remove this backwards compatibility layer, so you can always enjoy your up-to-date lightning fast CSV parser!
+
+So this works just fine:
+```lua
+ftcsv.parse("a>b>c\r\n1,2,3", ">", {loadFromString=true})
+```
+
+The delimiter as the second argument will always take precedent if both are provided.
 
 
 ## Licenses

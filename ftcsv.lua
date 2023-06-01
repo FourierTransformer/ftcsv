@@ -1,5 +1,5 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.3.0',
+    _VERSION = 'ftcsv 1.4.0',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
@@ -90,7 +90,7 @@ end
 
 
 -- determine the real headers as opposed to the header mapping
-local function determineRealHeaders(headerField, fieldsToKeep) 
+local function determineRealHeaders(headerField, fieldsToKeep)
     local realHeaders = {}
     local headerSet = {}
     for i = 1, #headerField do
@@ -420,50 +420,54 @@ local function parseOptions(delimiter, options, fromParseLine)
 
     if options then
 
-	if options.headers ~= nil then
-            assert(type(options.headers) == "boolean", "ftcsv only takes the boolean 'true' or 'false' for the optional parameter 'headers' (default 'true'). You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
-        end
+    if options.headers ~= nil then
+        assert(type(options.headers) == "boolean", "ftcsv only takes the boolean 'true' or 'false' for the optional parameter 'headers' (default 'true'). You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
+    end
 
-	if options.rename ~= nil then
-            assert(type(options.rename) == "table", "ftcsv only takes in a key-value table for the optional parameter 'rename'. You passed in '" .. tostring(options.rename) .. "' of type '" .. type(options.rename) .. "'.")
-        end
+    if options.rename ~= nil then
+        assert(type(options.rename) == "table", "ftcsv only takes in a key-value table for the optional parameter 'rename'. You passed in '" .. tostring(options.rename) .. "' of type '" .. type(options.rename) .. "'.")
+    end
 
-	if options.fieldsToKeep ~= nil then
-            assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.fieldsToKeep) .. "' of type '" .. type(options.fieldsToKeep) .. "'.")
-            local ofieldsToKeep = options.fieldsToKeep
-            if ofieldsToKeep ~= nil then
-                fieldsToKeep = {}
-                for j = 1, #ofieldsToKeep do
-                    fieldsToKeep[ofieldsToKeep[j]] = true
-                end
-            end
-            if options.headers == false and options.rename == nil then
-                error("ftcsv: fieldsToKeep only works with header-less files when using the 'rename' functionality")
+    if options.fieldsToKeep ~= nil then
+        assert(type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.fieldsToKeep) .. "' of type '" .. type(options.fieldsToKeep) .. "'.")
+        local ofieldsToKeep = options.fieldsToKeep
+        if ofieldsToKeep ~= nil then
+            fieldsToKeep = {}
+            for j = 1, #ofieldsToKeep do
+                fieldsToKeep[ofieldsToKeep[j]] = true
             end
         end
-
-	if options.loadFromString ~= nil then
-            assert(type(options.loadFromString) == "boolean", "ftcsv only takes a boolean value for optional parameter 'loadFromString'. You passed in '" .. tostring(options.loadFromString) .. "' of type '" .. type(options.loadFromString) .. "'.")
+        if options.headers == false and options.rename == nil then
+            error("ftcsv: fieldsToKeep only works with header-less files when using the 'rename' functionality")
         end
+    end
 
-	if options.headerFunc ~= nil then
-            assert(type(options.headerFunc) == "function", "ftcsv only takes a function value for optional parameter 'headerFunc'. You passed in '" .. tostring(options.headerFunc) .. "' of type '" .. type(options.headerFunc) .. "'.")
-        end
+    if options.loadFromString ~= nil then
+        assert(type(options.loadFromString) == "boolean", "ftcsv only takes a boolean value for optional parameter 'loadFromString'. You passed in '" .. tostring(options.loadFromString) .. "' of type '" .. type(options.loadFromString) .. "'.")
+    end
 
-	if options.ignoreQuotes == nil then
-            options.ignoreQuotes = false
+    if options.headerFunc ~= nil then
+        assert(type(options.headerFunc) == "function", "ftcsv only takes a function value for optional parameter 'headerFunc'. You passed in '" .. tostring(options.headerFunc) .. "' of type '" .. type(options.headerFunc) .. "'.")
+    end
+
+    if options.ignoreQuotes == nil then
+        options.ignoreQuotes = false
+    else
+        assert(type(options.ignoreQuotes) == "boolean", "ftcsv only takes a boolean value for optional parameter 'ignoreQuotes'. You passed in '" .. tostring(options.ignoreQuotes) .. "' of type '" .. type(options.ignoreQuotes) .. "'.")
+    end
+
+    if fromParseLine == true then
+        if options.bufferSize == nil then
+            options.bufferSize = 2^16
         else
-            assert(type(options.ignoreQuotes) == "boolean", "ftcsv only takes a boolean value for optional parameter 'ignoreQuotes'. You passed in '" .. tostring(options.ignoreQuotes) .. "' of type '" .. type(options.ignoreQuotes) .. "'.")
+            assert(type(options.bufferSize) == "number", "ftcsv only takes a number value for optional parameter 'bufferSize'. You passed in '" .. tostring(options.bufferSize) .. "' of type '" .. type(options.bufferSize) .. "'.")
         end
 
-	if options.bufferSize == nil then
-	    options.bufferSize = 2^16
-	else
-            assert(type(options.bufferSize) == "number", "ftcsv only takes a number value for optional parameter 'bufferSize'. You passed in '" .. tostring(options.bufferSize) .. "' of type '" .. type(options.bufferSize) .. "'.")
-            if fromParseLine == false then
-                error("ftcsv: bufferSize can only be specified using 'parseLine'. When using 'parse', the entire file is read into memory")
-            end
+    else
+        if options.bufferSize ~= nil then
+            error("ftcsv: bufferSize can only be specified using 'parseLine'. When using 'parse', the entire file is read into memory")
         end
+    end
 
     else
         options = {
@@ -555,13 +559,13 @@ end
 
 -- runs the show!
 function ftcsv.parse(inputFile, delimiter, options)
-    local realDelimiter, realOptions = determineArgumentOrder(delimiter, options)
+    local delimiter, options = determineArgumentOrder(delimiter, options)
 
-    local parsedOptions, fieldsToKeep = parseOptions(realDelimiter, realOptions, false)
+    local options, fieldsToKeep = parseOptions(delimiter, options, false)
 
-    local inputString = initializeInputFromStringOrFile(inputFile, parsedOptions, "*all")
+    local inputString = initializeInputFromStringOrFile(inputFile, options, "*all")
 
-    local endOfHeaders, parserArgs, finalHeaders = parseHeadersAndSetupArgs(inputString, realDelimiter, parsedOptions, fieldsToKeep, true)
+    local endOfHeaders, parserArgs, finalHeaders = parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsToKeep, true)
 
     local output = parseString(inputString, endOfHeaders, parserArgs)
 
@@ -591,6 +595,7 @@ local function initializeInputFile(inputString, options)
 end
 
 function ftcsv.parseLine(inputFile, delimiter, userOptions)
+    local delimiter, userOptions = determineArgumentOrder(delimiter, userOptions)
     local options, fieldsToKeep = parseOptions(delimiter, userOptions, true)
     local inputString, file = initializeInputFile(inputFile, options)
 
