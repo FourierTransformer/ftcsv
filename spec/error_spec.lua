@@ -58,14 +58,22 @@ end)
 
 it("should error when dealing with quotes", function()
 	local test = function()
-		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true})
+		return ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true})
 	end
-	assert.has_error(test, "ftcsv: can't find closing quote in row 1. Try running with the option ignoreQuotes=true if the source incorrectly uses quotes.")
+	assert.has_error(
+		test,
+		"ftcsv: can't find closing quote in row 1. Try running with the option ignoreQuotes=true " ..
+		"if the source incorrectly uses quotes."
+	)
 end)
 
 it("should error if bufferSize is set when parsing entire files", function()
 	local test = function()
-		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true, bufferSize=34})
+		return ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true, bufferSize=34})
 	end
-	assert.has_error(test, "ftcsv: bufferSize can only be specified using 'parseLine'. When using 'parse', the entire file is read into memory")
+	assert.has_error(
+		test,
+		"ftcsv: bufferSize can only be specified using 'parseLine'. When using 'parse', " ..
+		"the entire file is read into memory"
+	)
 end)

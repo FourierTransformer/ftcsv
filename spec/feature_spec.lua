@@ -363,7 +363,9 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
-	it("should handle only renaming fields from files without headers and only keeping a few fields with an empty header field", function()
+	it("should handle only renaming fields from files without headers and only keeping a few fields with an empty " ..
+	"header field",
+	function()
 		local expected = {}
 		expected[1] = {}
 		expected[1].a = "apple"
@@ -406,7 +408,7 @@ describe("csv features", function()
 		expected[1].B = "banana"
 		expected[1].C = "carrot"
 		local actual = ftcsv.parse(ftcsv.encode(expected, ","), ",", {loadFromString=true})
-		local expected = ftcsv.parse("A,B,C\napple,banana,carrot", ",", {loadFromString=true})
+		expected = ftcsv.parse("A,B,C\napple,banana,carrot", ",", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -417,7 +419,7 @@ describe("csv features", function()
 		expected[1].B = "banana"
 		expected[1].C = "carrot"
 		local actual = ftcsv.parse(ftcsv.encode(expected, ">"), ">", {loadFromString=true})
-		local expected = ftcsv.parse("A,B,C\napple,banana,carrot", ",", {loadFromString=true})
+		expected = ftcsv.parse("A,B,C\napple,banana,carrot", ",", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
@@ -428,13 +430,13 @@ describe("csv features", function()
 		expected[1].B = "banana"
 		expected[1].C = "carrot"
 		local actual = ftcsv.parse(ftcsv.encode(expected, ",", {fieldsToKeep={"A", "B"}}), ",", {loadFromString=true})
-		local expected = ftcsv.parse("A,B\napple,banana", ",", {loadFromString=true})
+		expected = ftcsv.parse("A,B\napple,banana", ",", {loadFromString=true})
 		assert.are.same(expected, actual)
 	end)
 
 	it("should handle encoding files (str test)", function()
 		local expected = '"a","b","c","d"\r\n"1","","foo","""quoted"""\r\n'
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
 		}, ',')
 		assert.are.same(expected, output)
@@ -442,7 +444,7 @@ describe("csv features", function()
 
 	it("should handle encoding files (str test) with other delimiter", function()
 		local expected = '"a">"b">"c">"d"\r\n"1">"">"foo">"""quoted"""\r\n'
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
 		}, '>')
 		assert.are.same(expected, output)
@@ -450,7 +452,7 @@ describe("csv features", function()
 
 	it("should handle encoding files without quotes (str test)", function()
 		local expected = 'a,b,c,d\r\n1,,"fo,o","""quoted"""\r\n'
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'fo,o', d = '"quoted"' };
 		}, ',', {onlyRequiredQuotes=true})
 		assert.are.same(expected, output)
@@ -458,7 +460,7 @@ describe("csv features", function()
 
 	it("should handle encoding files without quotes with other delimiter (str test)", function()
 		local expected = 'a>b>c>d\r\n1>>fo,o>"""quoted"""\r\n'
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'fo,o', d = '"quoted"' };
 		}, '>', {onlyRequiredQuotes=true})
 		assert.are.same(expected, output)
@@ -466,7 +468,7 @@ describe("csv features", function()
 
 	it("should handle encoding files without quotes with certain fields to keep (str test)", function()
 		local expected = "b,c\r\n,foo\r\n"
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
 		}, ',', {onlyRequiredQuotes=true, fieldsToKeep={"b", "c"}})
 		assert.are.same(expected, output)
