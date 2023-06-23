@@ -136,7 +136,8 @@ describe("csv features", function()
         for newline, j in pairs(newlines) do
             for quote, k in pairs(quotes) do
                 for _, endline in ipairs(endlines) do
-                    local name = "should handle only keeping a few fields with a rename to an existing field (%s + %s + %s) EOF: %s"
+                    local name = "should handle only keeping a few fields with a rename to an existing field " ..
+                    "(%s + %s + %s) EOF: %s"
                     it(name:format(bom, newline, quote, endline), function()
                         local expectedHeaders = {"a", "b"}
                         local expected = {}
@@ -167,7 +168,8 @@ describe("csv features", function()
         for newline, j in pairs(newlines) do
             for quote, k in pairs(quotes) do
                 for _, endline in ipairs(endlines) do
-                    local name = "should handle only keeping a few fields with a rename to a new field (%s + %s + %s) EOF: %s"
+                    local name = "should handle only keeping a few fields with a rename to a new field " ..
+                    "(%s + %s + %s) EOF: %s"
                     it(name:format(bom, newline, quote, endline), function()
                         local expectedHeaders = {"a", "f"}
                         local expected = {}
@@ -230,7 +232,8 @@ describe("csv features", function()
         for newline, j in pairs(newlines) do
             for quote, k in pairs(quotes) do
                 for _, endline in ipairs(endlines) do
-                    local name = "should apply a function via headerFunc with rename and fieldsToKeep (%s + %s + %s) EOF: %s"
+                    local name = "should apply a function via headerFunc with rename and fieldsToKeep " ..
+                    "(%s + %s + %s) EOF: %s"
                     it(name:format(bom, newline, quote, endline), function()
                         local expectedHeaders = {"A", "F"}
                         local expected = {}
@@ -247,7 +250,12 @@ describe("csv features", function()
                             defaultString = defaultString:format(i, j, j)
                         end
 
-                        local options = {loadFromString=true, rename={["c"] = "f"}, fieldsToKeep={"A","F"}, headerFunc=string.upper}
+                        local options = {
+                            loadFromString=true,
+                            rename={["c"] = "f"},
+                            fieldsToKeep={"A","F"},
+                            headerFunc=string.upper
+                        }
                         local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
@@ -396,7 +404,8 @@ describe("csv features", function()
         for newline, j in pairs(newlines) do
             for quote, k in pairs(quotes) do
                 for _, endline in ipairs(endlines) do
-                    local name = "should handle renaming fields from files without headers and only keeping a few fields (%s + %s + %s) EOF: %s"
+                    local name = "should handle renaming fields from files without headers and only keeping a few " ..
+                    "fields (%s + %s + %s) EOF: %s"
                     it(name:format(bom, newline, quote, endline), function()
                         local expectedHeaders = {"a", "b"}
                         local expected = {}
@@ -416,7 +425,12 @@ describe("csv features", function()
                             defaultString = defaultString:format(i, j, j)
                         end
 
-                        local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}}
+                        local options = {
+                            loadFromString=true,
+                            headers=false,
+                            rename={"a","b","c"},
+                            fieldsToKeep={"a","b"}
+                        }
                         local actual, actualHeaders = ftcsv.parse(defaultString, ",", options)
                         assert.are.same(expected, actual)
                         assert.are.same(expectedHeaders, actualHeaders)
@@ -430,7 +444,8 @@ describe("csv features", function()
         for newline, j in pairs(newlines) do
             for quote, k in pairs(quotes) do
                 for _, endline in ipairs(endlines) do
-                    local name = "should handle if the number of renames doesn't equal the number of fields (%s + %s + %s) EOF: %s"
+                    local name = "should handle if the number of renames doesn't equal the number of fields " ..
+                    "(%s + %s + %s) EOF: %s"
                     it(name:format(bom, newline, quote, endline), function()
                         local expectedHeaders = {"a", "b"}
                         local expected = {}
