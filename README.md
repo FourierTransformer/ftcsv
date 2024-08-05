@@ -144,7 +144,7 @@ file:close()
 ### Options
  - `fieldsToKeep`
 
-	if `fieldsToKeep` is set in the encode process, only the fields specified will be written out to a file.
+	if `fieldsToKeep` is set in the encode process, only the fields specified will be written out to a file. The `fieldsToKeep` will be written out in the order that is specified.
 
 	```lua
 	local output = ftcsv.encode(everyUser, ",", {fieldsToKeep={"Name", "Phone", "City"}})
@@ -155,7 +155,7 @@ file:close()
     if `onlyRequiredQuotes` is set to `true`, the output will only include quotes around fields that are quotes, have newlines, or contain the delimter.
 
     ```lua
-    local output = ftcsv.encode(everyUser, ",", {noQuotes=true})
+    local output = ftcsv.encode(everyUser, ",", {onlyRequiredQuotes=true})
     ```
 
 
