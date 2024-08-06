@@ -71,6 +71,16 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
+	it("should handle escaped doublequotes with delimiter in options", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = 'A"B""C'
+		expected[1].b = 'A""B"C'
+		expected[1].c = 'A"""B""C'
+		local actual = ftcsv.parse('a;b;c\n"A""B""""C";"A""""B""C";"A""""""B""""C"', {loadFromString=true, delimiter=";"})
+		assert.are.same(expected, actual)
+	end)
+
 	it("should handle renaming a field", function()
 		local expected = {}
 		expected[1] = {}
@@ -491,5 +501,40 @@ describe("csv features", function()
 		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", {loadFromString=true, ignoreQuotes=true})
 		assert.are.same(expected, actual)
 	end)
+
+	it("should handle ignoring the single quote without specifying the delimeter", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = '"apple'
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', {loadFromString=true, ignoreQuotes=true})
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle reusing the options", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = '"apple'
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local options = {loadFromString=true, ignoreQuotes=true}
+		local first = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", options)
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', ",", options)
+		assert.are.same(expected, actual)
+	end)
+
+	it("should handle reusing the options without specifying the delimeter", function()
+		local expected = {}
+		expected[1] = {}
+		expected[1].a = '"apple'
+		expected[1].b = "banana"
+		expected[1].c = "carrot"
+		local options = {loadFromString=true, ignoreQuotes=true}
+		local first = ftcsv.parse('a,b,c\n"apple,banana,carrot', options)
+		local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', options)
+		assert.are.same(expected, actual)
+	end)
+
 
 end)

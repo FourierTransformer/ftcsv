@@ -1,16 +1,16 @@
 package = "ftcsv"
-version = "1.3.0-1"
+version = "1.4.0-1"
 
 source = {
 	url = "git://github.com/FourierTransformer/ftcsv.git",
-	tag = "1.3.0"
+	tag = "1.4.0"
 }
 
 description = {
 	summary = "A fast pure lua csv library (parser and encoder)",
 	detailed = [[
    ftcsv is a fast and easy to use csv library for lua. It can read in CSV files,
-   do some basic transformations (rename fields) and can create the csv format.
+   do some basic transformations (rename fields, retain, etc) and can create a CSV file.
    It supports UTF-8, header-less CSVs, and maintaining correct line endings for
    multi-line fields.
 
