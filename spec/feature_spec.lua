@@ -502,7 +502,7 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
-	it("should handle ignoring the single quote without specifying the delimeter", function()
+	it("should handle ignoring the single quote without specifying the delimiter", function()
 		local expected = {}
 		expected[1] = {}
 		expected[1].a = '"apple'
@@ -524,7 +524,7 @@ describe("csv features", function()
 		assert.are.same(expected, actual)
 	end)
 
-	it("should handle reusing the options without specifying the delimeter", function()
+	it("should handle reusing the options without specifying the delimiter", function()
 		local expected = {}
 		expected[1] = {}
 		expected[1].a = '"apple'
