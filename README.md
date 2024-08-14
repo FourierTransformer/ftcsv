@@ -17,7 +17,7 @@ luarocks install ftcsv
 There are two main parsing methods: `ftcv.parse` and `ftcsv.parseLine`.
 `ftcsv.parse` loads the entire file and parses it, while `ftcsv.parseLine` is an iterator that parses one line at a time.
 
-### `ftcsv.parse(fileName, [, options])`
+### `ftcsv.parse(fileName [, options])`
 `ftcsv.parse` will load the entire csv file into memory, then parse it in one go, returning a lua table with the parsed data and a lua table containing the column headers. It has only one required parameter - the file name. A few optional parameters can be passed in via a table (examples below).
 
 Just loading a csv file:
@@ -26,7 +26,7 @@ local ftcsv = require('ftcsv')
 local zipcodes, headers = ftcsv.parse("free-zipcode-database.csv")
 ```
 
-### `ftcsv.parseLine(fileName, [, options])`
+### `ftcsv.parseLine(fileName [, options])`
 `ftcsv.parseLine` will open a file and read `options.bufferSize` bytes of the file. `bufferSize` defaults to 2^16 bytes (which provides the fastest parsing on most unix-based systems), or can be specified in the options. `ftcsv.parseLine` is an iterator and returns one line at a time. When all the lines in the buffer are read, it will read in another `bufferSize` bytes of a file and repeat the process until the entire file has been read.
 
 If specifying `bufferSize` there are a couple of things to remember:
@@ -48,7 +48,7 @@ end
 The options are the same for `parseLine` and `parse`, with the exception of `loadFromString` and `bufferSize`. `loadFromString` only works with `parse` and `bufferSize` can only be specified for `parseLine`.
 
 The following are optional parameters passed in via the third argument as a table.
- - `delimeter`
+ - `delimiter`
 
    If your file doesn't use the comma character as the delimiter, you can specify your own. It is limited to one character and defaults to `,`
    ```lua
@@ -131,23 +131,36 @@ ftcsv.parse("apple,banana,carrot", {loadFromString=true, headers=false})
 ```
 
 ## Encoding
-### `ftcsv.encode(inputTable, delimiter[, options])`
+### `ftcsv.encode(inputTable [, options])`
 
-`ftcsv.encode` takes in a lua table and turns it into a text string that can be written to a file. It has two required parameters, an inputTable and a delimiter. You can use it to write out a file like this:
+`ftcsv.encode` takes in a lua table and turns it into a text string that can be written to a file. You can use it to write out a file like this:
 ```lua
-local fileOutput = ftcsv.encode(users, ",")
+local users = {
+	{name="alice", fruit="apple"},
+	{name="bob", fruit="banana"},
+	{name="eve", fruit="pear"}
+}
+local fileOutput = ftcsv.encode(users)
 local file = assert(io.open("ALLUSERS.csv", "w"))
 file:write(fileOutput)
 file:close()
 ```
 
 ### Options
+ - `delimiter`
+
+   by default the encoder uses a `,` as a delimiter. The delimiter can be changed by setting a value for `delimiter`
+
+   ```lua
+   local output = ftcsv.encode(everyUser, {delimiter="\t"})
+   ```
+
  - `fieldsToKeep`
 
 	if `fieldsToKeep` is set in the encode process, only the fields specified will be written out to a file. The `fieldsToKeep` will be written out in the order that is specified.
 
 	```lua
-	local output = ftcsv.encode(everyUser, ",", {fieldsToKeep={"Name", "Phone", "City"}})
+	local output = ftcsv.encode(everyUser, {fieldsToKeep={"Name", "Phone", "City"}})
 	```
 
  - `onlyRequiredQuotes`
@@ -155,12 +168,28 @@ file:close()
     if `onlyRequiredQuotes` is set to `true`, the output will only include quotes around fields that are quotes, have newlines, or contain the delimter.
 
     ```lua
-    local output = ftcsv.encode(everyUser, ",", {onlyRequiredQuotes=true})
+    local output = ftcsv.encode(everyUser, {onlyRequiredQuotes=true})
     ```
 
 
 ## Error Handling
 ftcsv returns a litany of errors when passed a bad csv file or incorrect parameters. You can find a more detailed explanation of the more cryptic errors in [ERRORS.md](ERRORS.md)
+
+## Delimiter no longer required from 1.4.0!
+Starting with version 1.4.0, the delimiter no longer required as the second argument. **But don't worry,** ftcsv remains backwards compatible! We check the argument types and adjust parsing as necessary. There is no intention to remove this backwards compatibility layer, so your existing code should just keep on working!
+
+So this works just fine:
+```lua
+ftcsv.parse("a>b>c\r\n1,2,3", ">", {loadFromString=true})
+```
+
+as well as:
+```lua
+ftcsv.encode(users, ",")
+```
+
+The delimiter as the second argument will always take precedent if both are provided.
+
 
 ## Benchmarks
 We ran ftcsv against a few different csv parsers ([PIL](http://www.lua.org/pil/20.4.html)/[csvutils](http://lua-users.org/wiki/CsvUtils), [lua_csv](https://github.com/geoffleyland/lua-csv), and [lpeg_josh](http://lua-users.org/lists/lua-l/2009-08/msg00020.html)) for lua and here is what we found:
@@ -205,17 +234,6 @@ Feel free to create a new issue for any bugs you've found or help you need. If y
  6. Submit a pull request
  7. Wait for review
  8. Enjoy the changes made!
-
-
-## Delimiter no longer required as of 1.4.0!
-Starting with version 1.4.0, the delimiter no longer required as the second argument. **But don't worry,** ftcsv remains backwards compatible! We check the argument types and adjust parsing as necessary. There is no intention to remove this backwards compatibility layer, so you can always enjoy your up-to-date lightning fast CSV parser!
-
-So this works just fine:
-```lua
-ftcsv.parse("a>b>c\r\n1,2,3", ">", {loadFromString=true})
-```
-
-The delimiter as the second argument will always take precedent if both are provided.
 
 
 ## Licenses

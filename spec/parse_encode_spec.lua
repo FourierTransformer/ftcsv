@@ -76,13 +76,29 @@ describe("csv encode", function()
 		it("should handle " .. value, function()
 			local jsonFile = loadFile("spec/json/" .. value .. ".json")
 			local jsonDecode = cjson.decode(jsonFile)
-			-- local parse = staecsv:ftcsv(contents, ",")
 			local reEncoded = ftcsv.parse(ftcsv.encode(jsonDecode, ","), ",", {loadFromString=true})
-			-- local f = csv.openstring(contents, {separator=",", header=true})
-			-- local parse = {}
-			-- for fields in f:lines() do
-			  -- parse[#parse+1] = fields
-			-- end
+			assert.are.same(jsonDecode, reEncoded)
+		end)
+	end
+end)
+
+describe("csv encode without a delimiter", function()
+	for _, value in ipairs(files) do
+		it("should handle " .. value, function()
+			local jsonFile = loadFile("spec/json/" .. value .. ".json")
+			local jsonDecode = cjson.decode(jsonFile)
+			local reEncoded = ftcsv.parse(ftcsv.encode(jsonDecode), ",", {loadFromString=true})
+			assert.are.same(jsonDecode, reEncoded)
+		end)
+	end
+end)
+
+describe("csv encode with a delimiter specified in options", function()
+	for _, value in ipairs(files) do
+		it("should handle " .. value, function()
+			local jsonFile = loadFile("spec/json/" .. value .. ".json")
+			local jsonDecode = cjson.decode(jsonFile)
+			local reEncoded = ftcsv.parse(ftcsv.encode(jsonDecode, {delimiter="\t"}), {delimiter="\t", loadFromString=true})
 			assert.are.same(jsonDecode, reEncoded)
 		end)
 	end
@@ -93,13 +109,7 @@ describe("csv encode without quotes", function()
 		it("should handle " .. value, function()
 			local jsonFile = loadFile("spec/json/" .. value .. ".json")
 			local jsonDecode = cjson.decode(jsonFile)
-			-- local parse = staecsv:ftcsv(contents, ",")
 			local reEncodedNoQuotes = ftcsv.parse(ftcsv.encode(jsonDecode, ",", {onlyRequiredQuotes=true}), ",", {loadFromString=true})
-			-- local f = csv.openstring(contents, {separator=",", header=true})
-			-- local parse = {}
-			-- for fields in f:lines() do
-			  -- parse[#parse+1] = fields
-			-- end
 			assert.are.same(jsonDecode, reEncodedNoQuotes)
 		end)
 	end
