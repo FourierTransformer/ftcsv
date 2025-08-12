@@ -12,26 +12,27 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        luaVersion: [ "5.4", "5.3", "5.2", "5.1", "luajit", "luajit-openresty" ]
+        lua: [lua=5.1, lua=5.2, lua=5.3, lua=5.4, luajit=@v2.0, luajit=@v2.1]
     steps:
     - uses: actions/checkout@master
 
-    - name: Setup ‘lua’
-      uses: leafo/gh-actions-lua@v9
-      with:
-        luaVersion: ${{ matrix.luaVersion }}
-    - name: Setup ‘luarocks’
-      uses: leafo/gh-actions-luarocks@v4
+    - name: Install libreadline
+      run: sudo apt-get install -y libreadline-dev
+
+    - name: Install Lua (${{ matrix.lua }})
+      run: |
+        pip install hererocks
+        hererocks -r^ --${{ matrix.lua }} lua_install
+        echo lua_install/bin >> $GITHUB_PATH
         
-    - name: install depedencies
+    - name: Install depedencies
       run: |
         luarocks install busted
         luarocks install lua-cjson
         luarocks install luacov
         luarocks install luacov-coveralls
-
         
-    - name: run unit tests with coverage
+    - name: Run unit tests with coverage
       run: busted --verbose --coverage
         
     - name: Report test coverage
