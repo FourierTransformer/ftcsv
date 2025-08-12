@@ -48,80 +48,80 @@ end
 The options are the same for `parseLine` and `parse`, with the exception of `loadFromString` and `bufferSize`. `loadFromString` only works with `parse` and `bufferSize` can only be specified for `parseLine`.
 
 The following are optional parameters passed in via the third argument as a table.
- - `delimiter`
+- `delimiter`
 
-   If your file doesn't use the comma character as the delimiter, you can specify your own. It is limited to one character and defaults to `,`
-   ```lua
-   ftcsv.parse("a>b>c\r\n1,2,3", {loadFromString=true, delimiter=">"})
+  If your file doesn't use the comma character as the delimiter, you can specify your own. It is limited to one character and defaults to `,`
+  ```lua
+  ftcsv.parse("a>b>c\r\n1,2,3", {loadFromString=true, delimiter=">"})
+  ```
+
+- `loadFromString`
+
+  If you want to load a csv from a string instead of a file, set `loadFromString` to `true` (default: `false`)
+  ```lua
+  ftcsv.parse("a,b,c\r\n1,2,3", {loadFromString=true})
    ```
 
- - `loadFromString`
+- `rename`
 
- 	If you want to load a csv from a string instead of a file, set `loadFromString` to `true` (default: `false`)
- 	```lua
-	ftcsv.parse("a,b,c\r\n1,2,3", {loadFromString=true})
- 	```
+  If you want to rename a field, you can set `rename` to change the field names. The below example will change the headers from `a,b,c` to `d,e,f`
 
- - `rename`
+  Note: You can rename two fields to the same value, ftcsv will keep the field that appears latest in the line.
 
- 	If you want to rename a field, you can set `rename` to change the field names. The below example will change the headers from `a,b,c` to `d,e,f`
+  ```lua
+  local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "f"}}
+  local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", options)
+  ```
 
- 	Note: You can rename two fields to the same value, ftcsv will keep the field that appears latest in the line.
+- `fieldsToKeep`
 
- 	```lua
- 	local options = {loadFromString=true, rename={["a"] = "d", ["b"] = "e", ["c"] = "f"}}
-	local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot", options)
- 	```
+  If you only want to keep certain fields from the CSV, send them in as a table-list and it should parse a little faster and use less memory.
 
- - `fieldsToKeep`
+  Note: If you want to keep a renamed field, put the new name of the field in `fieldsToKeep`:
 
- 	If you only want to keep certain fields from the CSV, send them in as a table-list and it should parse a little faster and use less memory.
+  ```lua
+  local options = {loadFromString=true, fieldsToKeep={"a","f"}, rename={["c"] = "f"}}
+  local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", options)
+   ```
 
- 	Note: If you want to keep a renamed field, put the new name of the field in `fieldsToKeep`:
+  Also Note: If you apply a function to the headers via headerFunc, and want to select fields from fieldsToKeep, you need to have what the post-modified header would be in fieldsToKeep.
 
- 	```lua
-	local options = {loadFromString=true, fieldsToKeep={"a","f"}, rename={["c"] = "f"}}
-	local actual = ftcsv.parse("a,b,c\r\napple,banana,carrot\r\n", options)
- 	```
+- `ignoreQuotes`
 
- 	Also Note: If you apply a function to the headers via headerFunc, and want to select fields from fieldsToKeep, you need to have what the post-modified header would be in fieldsToKeep.
-
- - `ignoreQuotes`
-
-	If `ignoreQuotes` is `true`, it will leave all quotes in the final parsed output. This is useful in situations where the fields aren't quoted, but contain quotes, or if the CSV didn't handle quotes correctly and you're trying to parse it.
+  If `ignoreQuotes` is `true`, it will leave all quotes in the final parsed output. This is useful in situations where the fields aren't quoted, but contain quotes, or if the CSV didn't handle quotes correctly and you're trying to parse it.
 	
-	```lua
-	local options = {loadFromString=true, ignoreQuotes=true}
-	local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', options)
-	```
+  ```lua
+  local options = {loadFromString=true, ignoreQuotes=true}
+  local actual = ftcsv.parse('a,b,c\n"apple,banana,carrot', options)
+  ```
 
- - `headerFunc`
+- `headerFunc`
 
- 	Applies a function to every field in the header. If you are using `rename`, the function is applied after the rename.
+  Applies a function to every field in the header. If you are using `rename`, the function is applied after the rename.
 
- 	Ex: making all fields uppercase
- 	```lua
- 	local options = {loadFromString=true, headerFunc=string.upper}
-	local actual = ftcsv.parse("a,b,c\napple,banana,carrot", options)
- 	```
+  Ex: making all fields uppercase
+  ```lua
+  local options = {loadFromString=true, headerFunc=string.upper}
+  local actual = ftcsv.parse("a,b,c\napple,banana,carrot", options)
+  ```
 
- - `headers`
+- `headers`
 
- 	Set `headers` to `false` if the file you are reading doesn't have any headers. This will cause ftcsv to create indexed tables rather than a key-value tables for the output.
+  Set `headers` to `false` if the file you are reading doesn't have any headers. This will cause ftcsv to create indexed tables rather than a key-value tables for the output.
 
- 	```lua
-	local options = {loadFromString=true, headers=false, delimiter=">"}
-	local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
- 	```
+  ```lua
+  local options = {loadFromString=true, headers=false, delimiter=">"}
+  local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
+  ```
 
- 	Note: Header-less files can still use the `rename` option and after a field has been renamed, it can specified as a field to keep. The `rename` syntax changes a little bit:
+  Note: Header-less files can still use the `rename` option and after a field has been renamed, it can specified as a field to keep. The `rename` syntax changes a little bit:
 
- 	```lua
-	local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}, delimiter=">"}
-	local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
- 	```
+  ```lua
+  local options = {loadFromString=true, headers=false, rename={"a","b","c"}, fieldsToKeep={"a","b"}, delimiter=">"}
+  local actual = ftcsv.parse("apple>banana>carrot\ndiamond>emerald>pearl", options)
+  ```
 
- 	In the above example, the first field becomes 'a', the second field becomes 'b' and so on.
+  In the above example, the first field becomes 'a', the second field becomes 'b' and so on.
 
 For all tested examples, take a look in /spec/feature_spec.lua
 
@@ -149,28 +149,36 @@ file:close()
 ### Options
 - `delimiter`
 
-   by default the encoder uses a `,` as a delimiter. The delimiter can be changed by setting a value for `delimiter`
+  by default the encoder uses a `,` as a delimiter. The delimiter can be changed by setting a value for `delimiter`
 
-   ```lua
-   local output = ftcsv.encode(everyUser, {delimiter="\t"})
-   ```
+  ```lua
+  local output = ftcsv.encode(everyUser, {delimiter="\t"})
+  ```
 
 - `fieldsToKeep`
 
-	if `fieldsToKeep` is set in the encode process, only the fields specified will be written out to a file. The `fieldsToKeep` will be written out in the order that is specified.
+  if `fieldsToKeep` is set in the encode process, only the fields specified will be written out to a file. The `fieldsToKeep` will be written out in the order that is specified.
 
-	```lua
-	local output = ftcsv.encode(everyUser, {fieldsToKeep={"Name", "Phone", "City"}})
-	```
+  ```lua
+  local output = ftcsv.encode(everyUser, {fieldsToKeep={"Name", "Phone", "City"}})
+  ```
 
 - `onlyRequiredQuotes`
 
-    if `onlyRequiredQuotes` is set to `true`, the output will only include quotes around fields that are quotes, have newlines, or contain the delimter.
+  if `onlyRequiredQuotes` is set to `true`, the output will only include quotes around fields that are quotes, have newlines, or contain the delimter.
 
-    ```lua
-    local output = ftcsv.encode(everyUser, {onlyRequiredQuotes=true})
-    ```
+  ```lua
+  local output = ftcsv.encode(everyUser, {onlyRequiredQuotes=true})
+  ```
+
 - `encodeNilAs`
+
+  by default a `nil` value in a table will be encoded as the string `"nil"`. The value a `nil` value in the a table can be set with `encodeNilAs`.
+
+  ```lua
+  local output = ftcsv.encode(everyUser, {encodeNilAs=""}) -- for setting nil to the empty string
+  local output = ftcsv.encode(everyUser, {encodeNilAs=0}) -- for setting it to 0
+  ```
 
 
 
