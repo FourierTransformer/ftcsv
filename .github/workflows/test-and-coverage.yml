@@ -21,7 +21,7 @@ jobs:
 
     - name: Install Lua (${{ matrix.lua }})
       run: |
-        pip install hererocks
+        pip install git+https://github.com/luarocks/hererocks
         hererocks -r^ --${{ matrix.lua }} lua_install
         echo lua_install/bin >> $GITHUB_PATH
         
