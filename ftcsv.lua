@@ -1,11 +1,11 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.4.0',
+    _VERSION = 'ftcsv 1.5.0',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
         The MIT License (MIT)
 
-        Copyright (c) 2016-2023 Shakil Thakur
+        Copyright (c) 2016-2025 Fourier Transformer
 
         Permission is hereby granted, free of charge, to any person obtaining a copy
         of this software and associated documentation files (the "Software"), to deal
@@ -658,19 +658,33 @@ end
 -- The ENCODER code is below here
 -- This could be broken out, but is kept here for portability
 
-
-local function delimitField(field)
-    field = tostring(field)
-    if field:find('"') then
-        return field:gsub('"', '""')
-    else
-        return field
+local function generateCustomToString(valueToConvertNilTo)
+    local newReturnValue = tostring(valueToConvertNilTo)
+    local generatedFunction = function(field)
+        if type(field) == "nil" then
+            return newReturnValue
+        else
+            return tostring(field)
+        end
     end
+    return generatedFunction
 end
 
-local function generateDelimitAndQuoteField(delimiter)
+local function generateDelimitField(customToString)
+    local delimitField = function(field)
+        field = customToString(field)
+        if field:find('"') then
+            return field:gsub('"', '""')
+        else
+            return field
+        end
+    end
+    return delimitField
+end
+
+local function generateDelimitAndQuoteField(delimiter, customToString)
     local generatedFunction = function(field)
-        field = tostring(field)
+        field = customToString(field)
         if field:find('"') then
             return '"' .. field:gsub('"', '""') .. '"'
         elseif field:find('[\n' .. delimiter .. ']') then
@@ -722,10 +736,15 @@ local function csvLineGenerator(inputTable, delimiter, headers, options)
     arguments.t = inputTable
     -- we want to use the same delimitField throughout,
     -- so we're just going to pass it in
+
+    local toStringToUse = tostring
+    if options and options.encodeNilAs ~= nil then
+        toStringToUse = generateCustomToString(options.encodeNilAs)
+    end
     if options and options.onlyRequiredQuotes == true then
-        arguments.delimitField = generateDelimitAndQuoteField(delimiter)
+        arguments.delimitField = generateDelimitAndQuoteField(delimiter, toStringToUse)
     else
-        arguments.delimitField = delimitField
+        arguments.delimitField = generateDelimitField(toStringToUse)
     end
 
     return luaCompatibility.load(outputFunc), arguments, 0
@@ -752,9 +771,9 @@ end
 
 local function escapeHeadersForOutput(headers, delimiter, options)
     local escapedHeaders = {}
-    local delimitField = delimitField
+    local delimitField = generateDelimitField(tostring)
     if options and options.onlyRequiredQuotes == true then
-        delimitField = generateDelimitAndQuoteField(delimiter)
+        delimitField = generateDelimitAndQuoteField(delimiter, tostring)
     end
     for i = 1, #headers do
         escapedHeaders[i] = delimitField(headers[i])

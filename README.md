@@ -147,7 +147,7 @@ file:close()
 ```
 
 ### Options
- - `delimiter`
+- `delimiter`
 
    by default the encoder uses a `,` as a delimiter. The delimiter can be changed by setting a value for `delimiter`
 
@@ -155,7 +155,7 @@ file:close()
    local output = ftcsv.encode(everyUser, {delimiter="\t"})
    ```
 
- - `fieldsToKeep`
+- `fieldsToKeep`
 
 	if `fieldsToKeep` is set in the encode process, only the fields specified will be written out to a file. The `fieldsToKeep` will be written out in the order that is specified.
 
@@ -163,13 +163,15 @@ file:close()
 	local output = ftcsv.encode(everyUser, {fieldsToKeep={"Name", "Phone", "City"}})
 	```
 
- - `onlyRequiredQuotes`
+- `onlyRequiredQuotes`
 
     if `onlyRequiredQuotes` is set to `true`, the output will only include quotes around fields that are quotes, have newlines, or contain the delimter.
 
     ```lua
     local output = ftcsv.encode(everyUser, {onlyRequiredQuotes=true})
     ```
+- `encodeNilAs`
+
 
 
 ## Error Handling

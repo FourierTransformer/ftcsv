@@ -444,7 +444,7 @@ describe("csv features", function()
 
 	it("should handle encoding files (str test)", function()
 		local expected = '"a","b","c","d"\r\n"1","","foo","""quoted"""\r\n'
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
 		}, ',')
 		assert.are.same(expected, output)
@@ -452,7 +452,7 @@ describe("csv features", function()
 
 	it("should handle encoding files (str test) with other delimiter", function()
 		local expected = '"a">"b">"c">"d"\r\n"1">"">"foo">"""quoted"""\r\n'
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
 		}, '>')
 		assert.are.same(expected, output)
@@ -460,7 +460,7 @@ describe("csv features", function()
 
 	it("should handle encoding files without quotes (str test)", function()
 		local expected = 'a,b,c,d\r\n1,,"fo,o","""quoted"""\r\n'
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'fo,o', d = '"quoted"' };
 		}, ',', {onlyRequiredQuotes=true})
 		assert.are.same(expected, output)
@@ -468,7 +468,7 @@ describe("csv features", function()
 
 	it("should handle encoding files without quotes with other delimiter (str test)", function()
 		local expected = 'a>b>c>d\r\n1>>fo,o>"""quoted"""\r\n'
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'fo,o', d = '"quoted"' };
 		}, '>', {onlyRequiredQuotes=true})
 		assert.are.same(expected, output)
@@ -476,9 +476,79 @@ describe("csv features", function()
 
 	it("should handle encoding files without quotes with certain fields to keep (str test)", function()
 		local expected = "b,c\r\n,foo\r\n"
-		output = ftcsv.encode({
+		local output = ftcsv.encode({
 			{ a = 1, b = '', c = 'foo', d = '"quoted"' };
 		}, ',', {onlyRequiredQuotes=true, fieldsToKeep={"b", "c"}})
+		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files without nil conversion", function()
+		local expected  = '"f1","f2","f3"\r\n"a","b","c"\r\n"d","e","nil"\r\n"nil","nil","f"\r\n'
+		local output = ftcsv.encode({
+		    {f1 = "a", f2 = "b", f3 = "c"},
+		    {f1 = "d", f2 = "e",},
+		    {f3 = "f"},
+		})
+		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files with nil conversion to empty string", function()
+		local expected  = '"f1","f2","f3"\r\n"a","b","c"\r\n"d","e",""\r\n"","","f"\r\n'
+		local output = ftcsv.encode({
+		    {f1 = "a", f2 = "b", f3 = "c"},
+		    {f1 = "d", f2 = "e",},
+		    {f3 = "f"},
+		}, {encodeNilAs=""})
+		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files with nil conversion to number", function()
+		local expected  = '"f1","f2","f3"\r\n"a","b","c"\r\n"d","e","0"\r\n"0","0","f"\r\n'
+		local output = ftcsv.encode({
+		    {f1 = "a", f2 = "b", f3 = "c"},
+		    {f1 = "d", f2 = "e",},
+		    {f3 = "f"},
+		}, {encodeNilAs=0})
+		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files with nil conversion to number while only quoting required field", function()
+		local expected  = 'f1,f2,f3\r\na,b,c\r\nd,e,0\r\n0,0,f\r\n'
+		local output = ftcsv.encode({
+		    {f1 = "a", f2 = "b", f3 = "c"},
+		    {f1 = "d", f2 = "e",},
+		    {f3 = "f"},
+		}, {encodeNilAs=0, onlyRequiredQuotes=true})
+		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files with nil conversion to non-specified delimiter while only quoting required field", function()
+		local expected  = 'f1,f2,f3\r\na,b,c\r\nd,e,","\r\n",",",",f\r\n'
+		local output = ftcsv.encode({
+		    {f1 = "a", f2 = "b", f3 = "c"},
+		    {f1 = "d", f2 = "e",},
+		    {f3 = "f"},
+		}, {encodeNilAs=",", onlyRequiredQuotes=true})
+		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files with nil conversion to specified delimiter while only quoting required field", function()
+		local expected  = 'f1|f2|f3\r\na|b|c\r\nd|e|,\r\n,|,|f\r\n'
+		local output = ftcsv.encode({
+		    {f1 = "a", f2 = "b", f3 = "c"},
+		    {f1 = "d", f2 = "e",},
+		    {f3 = "f"},
+		}, {encodeNilAs=",", onlyRequiredQuotes=true, delimiter="|"})
+		assert.are.same(expected, output)
+	end)
+
+	it("should handle encoding files to delimiter with nil conversion to specified delimiter while only quoting required field", function()
+		local expected  = 'f1|f2|f3\r\na|b|c\r\nd|e|"|"\r\n"|"|"|"|f\r\n'
+		local output = ftcsv.encode({
+		    {f1 = "a", f2 = "b", f3 = "c"},
+		    {f1 = "d", f2 = "e",},
+		    {f3 = "f"},
+		}, {encodeNilAs="|", onlyRequiredQuotes=true, delimiter="|"})
 		assert.are.same(expected, output)
 	end)
 
