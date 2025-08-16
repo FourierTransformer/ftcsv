@@ -1,9 +1,9 @@
 package = "ftcsv"
-version = "1.4.0-1"
+version = "1.5.0-1"
 
 source = {
 	url = "git://github.com/FourierTransformer/ftcsv.git",
-	tag = "1.4.0"
+	tag = "1.5.0"
 }
 
 description = {
