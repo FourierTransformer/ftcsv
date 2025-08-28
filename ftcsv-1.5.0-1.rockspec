@@ -18,7 +18,7 @@ description = {
    buffered reading of a CSV file.
   ]],
 	homepage = "https://github.com/FourierTransformer/ftcsv",
-	maintainer = "Shakil Thakur <shakil.thakur@gmail.com>",
+	maintainer = "Fourier Transformer <ftransformer@protonmail.com>",
 	license = "MIT"
 }
 
