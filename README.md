@@ -180,7 +180,25 @@ file:close()
   local output = ftcsv.encode(everyUser, {encodeNilAs=0}) -- for setting it to 0
   ```
 
+- `allowEmpty`
 
+  If set to a non-`nil` value, this option allows encoding data sets that are entirely missing a field that was specified in `fieldsToKeep`. Otherwise, ftcsv would raise an error.
+
+  ```lua
+  local data = {
+    {a = 1, b = 2, c = 3},
+    {a = 10, b = 20},
+    {a = 100, c = 200},
+  }
+  ftcsv.encode(data, {fieldsToKeep = {"a", "b", "c", "d"}}) --> [throws an error]
+  ftcsv.encode(data, {fieldsToKeep = {"a", "b", "c", "d"}, allowEmpty = true})
+  --> [[
+  --> "a","b","c","d"
+  --> "1","2","3","nil"
+  --> "10","20","nil","nil"
+  --> "100","nil","200","nil"
+  --> ]]
+  ```
 
 ## Error Handling
 ftcsv returns a litany of errors when passed a bad csv file or incorrect parameters. You can find a more detailed explanation of the more cryptic errors in [ERRORS.md](ERRORS.md)
