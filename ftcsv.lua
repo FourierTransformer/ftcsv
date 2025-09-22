@@ -814,7 +814,9 @@ local function initializeGenerator(inputTable, delimiter, options)
     if headers == nil then
         headers = extractHeadersFromTable(inputTable)
     end
-    if not options.allowEmpty then validateHeaders(headers, inputTable) end
+    if options and options.allowEmpty == nil then
+        validateHeaders(headers, inputTable)
+    end
 
     local escapedHeaders = escapeHeadersForOutput(headers, delimiter, options)
     local output = initializeOutputWithEscapedHeaders(escapedHeaders, delimiter, options)
