@@ -115,16 +115,34 @@ describe("csv encode without quotes", function()
 	end
 end)
 
+--[[ This breaks simple_crlf.
+describe("csv encode with missing keys", function()
+	for _, value in ipairs(files) do
+		it("should handle " .. value, function()
+			local jsonFile = loadFile("spec/json/" .. value .. ".json")
+			local jsonDecode = cjson.decode(jsonFile)
+			local reEncoded = ftcsv.parse(ftcsv.encode(
+				jsonDecode, ",", {
+					fieldsToKeep = {"a", "b", "c", "d"},
+					allowMissingKeys = true,
+				}
+			), ",", {loadFromString=true})
+			assert.are.same(jsonDecode, reEncoded)
+		end)
+	end
+end)
+--]]
+
 describe("csv encode with missing keys", function()
 	it("should handle missing_keys", function()
 		local jsonFile = loadFile("spec/json/missing_keys.json")
 		local jsonDecode = cjson.decode(jsonFile)
 		local reEncoded = ftcsv.parse(ftcsv.encode(
-            jsonDecode, ",", {
-                fieldsToKeep = {"a", "b", "c", "d"},
-                allowMissingKeys = true,
-            }
-        ), ",", {loadFromString=true})
+			jsonDecode, ",", {
+				fieldsToKeep = {"a", "b", "c", "d"},
+				allowEmptyKeys = true,
+			}
+		), ",", {loadFromString=true})
 		assert.are.same(jsonDecode, reEncoded)
 	end)
 end)
