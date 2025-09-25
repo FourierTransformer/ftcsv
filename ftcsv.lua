@@ -814,7 +814,7 @@ local function initializeGenerator(inputTable, delimiter, options)
     if headers == nil then
         headers = extractHeadersFromTable(inputTable)
     end
-    if options and options.allowEmpty == nil then
+    if options and options.allowMissingKeys == nil then
         validateHeaders(headers, inputTable)
     end
 
@@ -828,8 +828,11 @@ function ftcsv.encode(inputTable, delimiter, options)
     local delimiter, options = determineArgumentOrder(delimiter, options)
     local output, headers = initializeGenerator(inputTable, delimiter, options)
 
-    for i, line in csvLineGenerator(inputTable, delimiter, headers, options) do
-        output[i+1] = line
+    if options.noHeader then output = {} end
+    if not options.noData then
+        for i, line in csvLineGenerator(inputTable, delimiter, headers, options) do
+            output[i+1] = line
+        end
     end
 
     -- combine and return final string

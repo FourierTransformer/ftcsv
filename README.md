@@ -180,7 +180,7 @@ file:close()
   local output = ftcsv.encode(everyUser, {encodeNilAs=0}) -- for setting it to 0
   ```
 
-- `allowEmpty`
+- `allowMissingKeys`
 
   If set to a non-`nil` value, this option allows encoding data sets that are entirely missing a field that was specified in `fieldsToKeep`. Otherwise, ftcsv would raise an error.
 
@@ -191,7 +191,7 @@ file:close()
     {a = 100, c = 200},
   }
   ftcsv.encode(data, {fieldsToKeep = {"a", "b", "c", "d"}}) --> [throws an error]
-  ftcsv.encode(data, {fieldsToKeep = {"a", "b", "c", "d"}, allowEmpty = true})
+  ftcsv.encode(data, {fieldsToKeep = {"a", "b", "c", "d"}, allowMissingKeys = true})
   --> [[
   --> "a","b","c","d"
   --> "1","2","3","nil"
