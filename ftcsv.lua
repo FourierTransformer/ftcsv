@@ -828,6 +828,10 @@ function ftcsv.encode(inputTable, delimiter, options)
     local delimiter, options = determineArgumentOrder(delimiter, options)
     local output, headers = initializeGenerator(inputTable, delimiter, options)
 
+    for i, line in csvLineGenerator(inputTable, delimiter, headers, options) do
+        output[i+1] = line
+    end
+
     -- combine and return final string
     return table.concat(output)
 end
