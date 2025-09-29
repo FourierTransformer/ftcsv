@@ -140,7 +140,7 @@ describe("csv encode with missing keys", function()
 		local reEncoded = ftcsv.parse(ftcsv.encode(
 			jsonDecode, ",", {
 				fieldsToKeep = {"a", "b", "c", "d"},
-				allowEmptyKeys = true,
+				allowMissingKeys = true,
 			}
 		), ",", {loadFromString=true})
 		assert.are.same(jsonDecode, reEncoded)
