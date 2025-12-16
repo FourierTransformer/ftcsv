@@ -139,10 +139,10 @@ local function generateHeadersMetamethod(finalHeaders)
 end
 
 -- main function used to parse
-local function parseString(inputString, i, options)
+local function parseString(inputString, i, settings)
 
     -- keep track of my chars!
-    local inputLength = options.inputLength or #inputString
+    local inputLength = settings.inputLength or #inputString
     local currentChar, nextChar = sbyte(inputString, i), nil
     local skipChar = 0
     local field
@@ -153,21 +153,22 @@ local function parseString(inputString, i, options)
     local doubleQuoteEscape, emptyIdentified = false, false
 
     local skipIndex
-    local charPatternToSkip = "[" .. options.delimiter .. "\r\n]"
+    local charPatternToSkip = "[" .. settings.delimiter .. "\r\n]"
 
     --bytes
     local CR = sbyte("\r")
     local LF = sbyte("\n")
     local quote = sbyte('"')
-    local delimiterByte = sbyte(options.delimiter)
+    local delimiterByte = sbyte(settings.delimiter)
 
     -- explode most used options
-    local headersMetamethod = options.headersMetamethod
-    local fieldsToKeep = options.fieldsToKeep
-    local ignoreQuotes = options.ignoreQuotes
-    local headerField = options.headerField
-    local endOfFile = options.endOfFile
-    local buffered = options.buffered
+    local headersMetamethod = settings.headersMetamethod
+    local encodeEmptyAs = settings.encodeEmptyAs
+    local fieldsToKeep = settings.fieldsToKeep
+    local ignoreQuotes = settings.ignoreQuotes
+    local headerField = settings.headerField
+    local endOfFile = settings.endOfFile
+    local buffered = settings.buffered
 
     local outResults = {}
 
@@ -185,7 +186,7 @@ local function parseString(inputString, i, options)
     outResults[1] = {}
 
     -- totalColumnCount based on unique headers and fieldsToKeep
-    local totalColumnCount = options.totalColumnCount or determineTotalColumnCount(headerField, fieldsToKeep)
+    local totalColumnCount = settings.totalColumnCount or determineTotalColumnCount(headerField, fieldsToKeep)
 
     local function assignValueToField()
         if fieldsToKeep == nil or fieldsToKeep[headerField[fieldNum]] then
@@ -196,20 +197,32 @@ local function parseString(inputString, i, options)
             else
                 field = ssub(inputString, fieldStart, i-1)
             end
+
             if doubleQuoteEscape then
                 field = field:gsub('""', '"')
+            end
+
+            -- assign field in output
+            if headerField[fieldNum] ~= nil then
+                -- while this seems odd down here, and it looks like I should just be able to 
+                -- set "field" accordingly above, that doesn't actually work because "field"
+                -- gets checked elsewhere in the code and changing it's value causes other things
+                -- to break. I could do a temp variable and swap it back, but that seems heavy for
+                -- a method that gets called regularly.
+                -- also emptyIdentified is true for the actual empty string (ie '""') in the csv,
+                -- as opposed to no value being present
+                if fieldStart == i and emptyIdentified == false and encodeEmptyAs ~= nil then
+                    outResults[lineNum][headerField[fieldNum]] = encodeEmptyAs
+                else
+                    outResults[lineNum][headerField[fieldNum]] = field
+                end
+            else
+                error('ftcsv: too many columns in row ' .. settings.rowOffset + lineNum)
             end
 
             -- reset flags
             doubleQuoteEscape = false
             emptyIdentified = false
-
-            -- assign field in output
-            if headerField[fieldNum] ~= nil then
-                outResults[lineNum][headerField[fieldNum]] = field
-            else
-                error('ftcsv: too many columns in row ' .. options.rowOffset + lineNum)
-            end
         end
     end
 
@@ -265,7 +278,7 @@ local function parseString(inputString, i, options)
                     fieldStart = i + 1 + skipChar
                     lineStart = fieldStart
                 else
-                    error('ftcsv: too few columns in row ' .. options.rowOffset + lineNum)
+                    error('ftcsv: too few columns in row ' .. settings.rowOffset + lineNum)
                 end
             else
                 lineNum = lineNum + 1
@@ -290,7 +303,7 @@ local function parseString(inputString, i, options)
                 outResults[lineNum] = nil
                 return outResults, lineStart
             else
-                error("ftcsv: can't find closing quote in row " .. options.rowOffset + lineNum ..
+                error("ftcsv: can't find closing quote in row " .. settings.rowOffset + lineNum ..
                  ". Try running with the option ignoreQuotes=true if the source incorrectly uses quotes.")
             end
         end
@@ -321,7 +334,7 @@ local function parseString(inputString, i, options)
         if fieldNum == 1 and field == "" then
             outResults[lineNum] = nil
         else
-            error('ftcsv: too few columns in row ' .. options.rowOffset + lineNum)
+            error('ftcsv: too few columns in row ' .. settings.rowOffset + lineNum)
         end
     end
 
@@ -535,6 +548,7 @@ local function parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsT
         inputLength = endOfHeaderRow,
         buffered = false,
         ignoreQuotes = options.ignoreQuotes,
+        encodeEmptyAs = options.encodeEmptyAs,
         rowOffset = 0
     }
 
