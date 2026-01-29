@@ -19,6 +19,13 @@ jobs:
     - name: Install libreadline
       run: sudo apt-get install -y libreadline-dev
 
+    - name: Cache Restore
+      uses: actions/cache/restore@v5
+      with:
+        path: |
+          lua_install
+        key: ${{ matrix.lua }}-lua_install
+
     - name: Install Lua (${{ matrix.lua }})
       run: |
         pip install git+https://github.com/luarocks/hererocks
@@ -27,14 +34,20 @@ jobs:
         
     - name: Install depedencies
       run: |
-        luarocks install busted
+        luarocks install tested
         luarocks install lua-cjson
-        luarocks install luacov
         luarocks install luacov-coveralls
         
     - name: Run unit tests with coverage
-      run: busted --verbose --coverage
-        
+      run: tested -c
+
+    - name: Save Cache
+      uses: actions/cache/save@v5
+      with:
+        path: |
+          lua_install
+        key: ${{ matrix.lua }}-lua_install
+
     - name: Report test coverage
       if: success()
       continue-on-error: true
