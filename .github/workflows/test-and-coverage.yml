@@ -11,6 +11,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         lua: [lua=5.1, lua=5.2, lua=5.3, lua=5.4, lua=5.5, luajit=@v2.0, luajit=@v2.1]
     steps:
@@ -39,7 +40,7 @@ jobs:
         luarocks install luacov-coveralls
         
     - name: Run unit tests with coverage
-      run: tested -c
+      run: tested -c -n 0
 
     - name: Save Cache
       uses: actions/cache/save@v5
