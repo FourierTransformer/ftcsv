@@ -830,6 +830,10 @@ function ftcsv.encode(inputTable, delimiter, options)
 
     local offset
     if (options or {}).headers == false then
+        if #(options.fieldsToKeep or {}) == 0 then
+            error("`fieldsToKeep` must be specified if generating a CSV \z
+            without a header.")
+        end
         output = {}
         offset = 0
     else offset = 1 end
