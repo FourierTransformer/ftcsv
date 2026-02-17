@@ -128,3 +128,20 @@ describe("csv encode with missing keys", function()
 		assert.are.same(jsonDecode, reEncoded)
 	end)
 end)
+
+
+describe("csv encode with selective omissions", function()
+	local jsonFile = loadFile("spec/json/correctness.json")
+	local jsonDecode = cjson.decode(jsonFile)
+
+	it("should output only data in a specific order", function()
+		local reEncoded = ftcsv.parse(ftcsv.encode(
+			jsonDecode, ",", {
+				fieldsToKeep = {"Model", "Price", "Year"},
+				headers = false,
+			}
+		), ",", {loadFromString=true, headers=false})
+		local exp = ftcsv.parse("spec/csvs/no_header.csv", {headers = false})
+		assert.are.same(exp, reEncoded)
+	end)
+end)
