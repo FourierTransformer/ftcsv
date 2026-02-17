@@ -200,6 +200,15 @@ file:close()
   --> ]]
   ```
 
+- `headers`
+
+If set to `false` it only outputs the data without the headers. This is useful
+for streaming CSV in chunks, by outputting the header first (e.g., using an
+empty table), and then one or more rows of data in a loop.
+
+To ensure a correct data layout, this option must be used with `fieldsToKeep`
+set to a constant ordering throughout the loop.
+
 ## Error Handling
 ftcsv returns a litany of errors when passed a bad csv file or incorrect parameters. You can find a more detailed explanation of the more cryptic errors in [ERRORS.md](ERRORS.md)
 

@@ -828,8 +828,15 @@ function ftcsv.encode(inputTable, delimiter, options)
     local delimiter, options = determineArgumentOrder(delimiter, options)
     local output, headers = initializeGenerator(inputTable, delimiter, options)
 
+    local offset
+    if (options or {}).headers == false then
+        output = {}
+        offset = 0
+    else offset = 1 end
+
     for i, line in csvLineGenerator(inputTable, delimiter, headers, options) do
-        output[i+1] = line
+        -- Overwrite header with first line if headers is false
+        output[i + offset] = line
     end
 
     -- combine and return final string
