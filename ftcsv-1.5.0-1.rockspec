@@ -25,14 +25,13 @@ description = {
 }
 
 test_dependencies = {
-   "tested == 0.2.0",
+   "tested == 0.3.0",
    "lua-cjson"
 }
 
 test = {
    type = "tested",
-   -- in this case -n 0 is actually faster!
-   flags = { "-c", "-n", "0" }
+   flags = { "-c" }
 }
 
 dependencies = {
