@@ -1,3 +1,5 @@
+rockspec_format = "3.0"
+
 package = "ftcsv"
 version = "1.5.0-1"
 
@@ -20,6 +22,16 @@ description = {
 	homepage = "https://github.com/FourierTransformer/ftcsv",
 	maintainer = "Fourier Transformer <ftransformer@protonmail.com>",
 	license = "MIT"
+}
+
+test_dependencies = {
+   "tested == 0.3.0",
+   "lua-cjson"
+}
+
+test = {
+   type = "tested",
+   flags = { "-c" }
 }
 
 dependencies = {
