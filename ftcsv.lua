@@ -557,7 +557,25 @@ local function parseHeadersAndSetupArgs(inputString, delimiter, options, fieldsT
     return endOfHeaders, parserArgs, finalHeaders
 end
 
+---@package
+---@class options
+---@field delimiter? string limited to one char; default: `,`
+---@field rename? {[string]:string} If you want to rename a field, you can set rename to change the field names.
+---@field fieldsToKeep? string[] If you only want to keep certain fields from the CSV, send them in as a table-list and it should parse a little faster and use less memory.
+---@field ignoreQuotes? boolean leave all quotes in the final parsed output; default: `false`
+---@field headerfunc? function Applies a function to every field in the header.
+---@field headers? boolean if the file you are reading doesn't have any headers. default: `true`
+
+---@class parseOptions : options
+---@field loadFromString? boolean load a csv from a string instead of a file; default: `false`
+
 -- runs the show!
+---load the entire csv file into memory, then parse it in one go, returning a lua table
+--- with the parsed data and a lua table containing the column headers.
+---@param inputFile string file path name
+---@param delimiter? string
+---@param options? parseOptions
+---@return table[] output, string[] headers
 function ftcsv.parse(inputFile, delimiter, options)
     local delimiter, options = determineArgumentOrder(delimiter, options)
 
@@ -572,7 +590,7 @@ function ftcsv.parse(inputFile, delimiter, options)
     return output, finalHeaders
 end
 
-local function getFileSize (file)
+local function getFileSize(file)
     local current = file:seek()
     local size = file:seek("end")
     file:seek("set", current)
@@ -594,6 +612,17 @@ local function initializeInputFile(inputString, options)
     return initializeInputFromStringOrFile(inputString, options, options.bufferSize)
 end
 
+---@class parseLineOptions : options
+---@field bufferSize? integer
+
+--- open a file and read options.bufferSize bytes of the file. bufferSize defaults to 2^16 bytes
+--- (which provides the fastest parsing on most unix-based systems), or can be specified in the options. ftcsv.parseLine
+--- is an iterator and returns one line at a time. When all the lines in the buffer are read, it will read in another
+--- bufferSize bytes of a file and repeat the process until the entire file has been read.
+---@param inputFile string
+---@param delimiter? string
+---@param userOptions? parseLineOptions
+---@return function
 function ftcsv.parseLine(inputFile, delimiter, userOptions)
     local delimiter, userOptions = determineArgumentOrder(delimiter, userOptions)
     local options, fieldsToKeep = parseOptions(delimiter, userOptions, true)
@@ -823,7 +852,20 @@ local function initializeGenerator(inputTable, delimiter, options)
     return output, headers
 end
 
+---@package
+---@class encodeOptions
+---@field delimiter? string
+---@field fieldsToKeep? string[]
+---@field onlyRequiredQuotes? boolean
+---@field encodeNilAs string|number|boolean|nil
+---@field allowMissingKeys? string[]
+
 -- works really quickly with luajit-2.1, because table.concat life
+--- takes in a lua table and turns it into a text string that can be written to a file.
+---@param inputTable table[]
+---@param delimiter? string
+---@param options? encodeOptions
+---@return string
 function ftcsv.encode(inputTable, delimiter, options)
     local delimiter, options = determineArgumentOrder(delimiter, options)
     local output, headers = initializeGenerator(inputTable, delimiter, options)
