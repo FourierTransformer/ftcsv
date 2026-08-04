@@ -34,11 +34,11 @@ local files = {
 
 tested.test("csv decode", function()
 	for _, value in ipairs(files) do
-		local json = loadFile("spec/json/" .. value .. ".json")
+		local json = loadFile("tests/json/" .. value .. ".json")
 		json = cjson.decode(json)
-		local parse = ftcsv.parse("spec/csvs/" .. value .. ".csv", ",")
+		local parse = ftcsv.parse("tests/csvs/" .. value .. ".csv", ",")
 		tested.assert({
-			given="spec/csvs/" .. value .. ".csv",
+			given="tests/csvs/" .. value .. ".csv",
 			should="handle " .. value,
 			expected=json,
 			actual=parse
@@ -48,14 +48,14 @@ end)
 
 tested.test("csv parseLine decode", function()
 	for _, value in ipairs(files) do
-		local json = loadFile("spec/json/" .. value .. ".json")
+		local json = loadFile("tests/json/" .. value .. ".json")
 		json = cjson.decode(json)
 		local parse = {}
-		for i, v in ftcsv.parseLine("spec/csvs/" .. value .. ".csv", ",") do
+		for i, v in ftcsv.parseLine("tests/csvs/" .. value .. ".csv", ",") do
 			parse[i] = v
 		end
 		tested.assert({
-			given="spec/csvs/" .. value .. ".csv",
+			given="tests/csvs/" .. value .. ".csv",
 			should="handle " .. value,
 			expected = json,
 			actual=parse
@@ -65,12 +65,12 @@ end)
 
 tested.test("csv decode from string", function()
 	for _, value in ipairs(files) do
-		local contents = loadFile("spec/csvs/" .. value .. ".csv")
-		local json = loadFile("spec/json/" .. value .. ".json")
+		local contents = loadFile("tests/csvs/" .. value .. ".csv")
+		local json = loadFile("tests/json/" .. value .. ".json")
 		json = cjson.decode(json)
 		local parse = ftcsv.parse(contents, ",", {loadFromString=true})
 		tested.assert({
-			given="spec/csvs/" .. value .. ".csv",
+			given="tests/csvs/" .. value .. ".csv",
 			should="handle " .. value,
 			expected = json,
 			actual=parse
@@ -80,11 +80,11 @@ end)
 
 tested.test("csv reencode", function()
 	for _, value in ipairs(files) do
-		local jsonFile = loadFile("spec/json/" .. value .. ".json")
+		local jsonFile = loadFile("tests/json/" .. value .. ".json")
 		local jsonDecode = cjson.decode(jsonFile)
 		local reEncoded = ftcsv.parse(ftcsv.encode(jsonDecode, ","), ",", {loadFromString=true})
 		tested.assert({
-			given="spec/json/" .. value .. ".json",
+			given="tests/json/" .. value .. ".json",
 			should="handle " .. value,
 			expected = jsonDecode,
 			actual=reEncoded
@@ -94,11 +94,11 @@ end)
 
 tested.test("csv encode without a delimiter", function()
 	for _, value in ipairs(files) do
-		local jsonFile = loadFile("spec/json/" .. value .. ".json")
+		local jsonFile = loadFile("tests/json/" .. value .. ".json")
 		local jsonDecode = cjson.decode(jsonFile)
 		local reEncoded = ftcsv.parse(ftcsv.encode(jsonDecode), ",", {loadFromString=true})
 		tested.assert({
-			given="spec/json/" .. value .. ".json",
+			given="tests/json/" .. value .. ".json",
 			should="handle " .. value,
 			expected = jsonDecode,
 			actual=reEncoded
@@ -108,11 +108,11 @@ end)
 
 tested.test("csv encode with a delimiter specified in options", function()
 	for _, value in ipairs(files) do
-		local jsonFile = loadFile("spec/json/" .. value .. ".json")
+		local jsonFile = loadFile("tests/json/" .. value .. ".json")
 		local jsonDecode = cjson.decode(jsonFile)
 		local reEncoded = ftcsv.parse(ftcsv.encode(jsonDecode, {delimiter="\t"}), {delimiter="\t", loadFromString=true})
 		tested.assert({
-			given="spec/json/" .. value .. ".json",
+			given="tests/json/" .. value .. ".json",
 			should="handle " .. value,
 			expected = jsonDecode,
 			actual=reEncoded
@@ -122,11 +122,11 @@ end)
 
 tested.test("csv encode without quotes", function()
 	for _, value in ipairs(files) do
-		local jsonFile = loadFile("spec/json/" .. value .. ".json")
+		local jsonFile = loadFile("tests/json/" .. value .. ".json")
 		local jsonDecode = cjson.decode(jsonFile)
 		local reEncodedNoQuotes = ftcsv.parse(ftcsv.encode(jsonDecode, ",", {onlyRequiredQuotes=true}), ",", {loadFromString=true})
 		tested.assert({
-			given="spec/json/" .. value .. ".json",
+			given="tests/json/" .. value .. ".json",
 			should="handle " .. value,
 			expected = jsonDecode,
 			actual=reEncodedNoQuotes
@@ -135,7 +135,7 @@ tested.test("csv encode without quotes", function()
 end)
 
 tested.test("csv encode with missing keys", function()
-	local jsonFile = loadFile("spec/json/missing_keys.json")
+	local jsonFile = loadFile("tests/json/missing_keys.json")
 	local jsonDecode = cjson.decode(jsonFile)
 	local reEncoded = ftcsv.parse(ftcsv.encode(
 		jsonDecode, ",", {
@@ -144,7 +144,7 @@ tested.test("csv encode with missing keys", function()
 		}
 	), ",", {loadFromString=true})
 	tested.assert({
-		given="spec/json/missing_keys.json",
+		given="tests/json/missing_keys.json",
 		should="handle missing_keys",
 		expected = jsonDecode,
 		actual=reEncoded

@@ -8,12 +8,12 @@ local files = {
     {"too_few_cols", "ftcsv: too few columns in row 1"},
     {"too_few_cols_end", "ftcsv: too few columns in row 2"},
     {"too_many_cols", "ftcsv: too many columns in row 2"},
-    {"dne", "ftcsv: File not found at spec/bad_csvs/dne.csv"}
+    {"dne", "ftcsv: File not found at tests/bad_csvs/dne.csv"}
 }
 
 tested.test("csv decode error", function()
     for _, value in ipairs(files) do
-        local filename = "spec/bad_csvs/" .. value[1] .. ".csv"
+        local filename = "tests/bad_csvs/" .. value[1] .. ".csv"
         tested.assert_throws_exception({
             given=filename,
             should="throw specific exception",
