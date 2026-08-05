@@ -1,11 +1,11 @@
 local ftcsv = {
-    _VERSION = 'ftcsv 1.5.0',
+    _VERSION = 'ftcsv 1.6.0',
     _DESCRIPTION = 'CSV library for Lua',
     _URL         = 'https://github.com/FourierTransformer/ftcsv',
     _LICENSE     = [[
         The MIT License (MIT)
 
-        Copyright (c) 2016-2025 Fourier Transformer
+        Copyright (c) 2016-2026 Fourier Transformer
 
         Permission is hereby granted, free of charge, to any person obtaining a copy
         of this software and associated documentation files (the "Software"), to deal
@@ -559,20 +559,20 @@ end
 
 ---@package
 ---@class options
----@field delimiter? string limited to one char; default: `,`
----@field rename? {[string]:string} If you want to rename a field, you can set rename to change the field names.
+---@field delimiter? string If your file doesn't use the comma character as the delimiter, you can specify your own. It is limited to one character and defaults to `,`
+---@field loadFromString? boolean If you want to load a csv from a string instead of a file, set `loadFromString` to `true` and pass CSV data as the first argument
+---@field rename? {[string]:string} If you want to rename a field, you can set `rename` to change the field names
 ---@field fieldsToKeep? string[] If you only want to keep certain fields from the CSV, send them in as a table-list and it should parse a little faster and use less memory.
----@field ignoreQuotes? boolean leave all quotes in the final parsed output; default: `false`
----@field headerfunc? function Applies a function to every field in the header.
----@field headers? boolean if the file you are reading doesn't have any headers. default: `true`
+---@field ignoreQuotes? boolean If `ignoreQuotes` is `true`, it will leave all quotes in the final parsed output. This is useful in situations where the fields aren't quoted, but contain quotes, or if the CSV didn't handle quotes correctly and you're trying to parse it.
+---@field headerfunc? function Applies a function to every field in the header. If you are using `rename`, the function is applied after the rename.
+---@field headers? boolean Set `headers` to `false` if the file you are reading doesn't have any headers. This will cause ftcsv to create indexed tables rather than a key-value tables for the output.
 
 ---@class parseOptions : options
 ---@field loadFromString? boolean load a csv from a string instead of a file; default: `false`
 
--- runs the show!
----load the entire csv file into memory, then parse it in one go, returning a lua table
+--load the entire csv file into memory, then parse it in one go, returning a lua table
 --- with the parsed data and a lua table containing the column headers.
----@param inputFile string file path name
+---@param inputFile string filepath
 ---@param delimiter? string
 ---@param options? parseOptions
 ---@return table[] output, string[] headers
@@ -613,13 +613,11 @@ local function initializeInputFile(inputString, options)
 end
 
 ---@class parseLineOptions : options
----@field bufferSize? integer
+---@field bufferSize? integer The size of the buffer used during reading (defaults to 2^16 bytes)
 
---- open a file and read options.bufferSize bytes of the file. bufferSize defaults to 2^16 bytes
---- (which provides the fastest parsing on most unix-based systems), or can be specified in the options. ftcsv.parseLine
---- is an iterator and returns one line at a time. When all the lines in the buffer are read, it will read in another
---- bufferSize bytes of a file and repeat the process until the entire file has been read.
----@param inputFile string
+--- ftcsv.parseLine returns one line at a time while reading the file in bytes by a fixed amount at a time (`bufferSize`)
+--- until the entire file has been read.
+---@param inputFile string filepath
 ---@param delimiter? string
 ---@param userOptions? parseLineOptions
 ---@return function
@@ -826,6 +824,9 @@ end
 local function getHeadersFromOptions(options)
     local headers = nil
     if options then
+        if options.headers == false and options.fieldsToKeep == nil then
+            error("`fieldsToKeep` must be specified if generating a CSV without a header.")
+        end
         if options.fieldsToKeep ~= nil then
             assert(
                 type(options.fieldsToKeep) == "table", "ftcsv only takes in a list (as a table) for the optional parameter 'fieldsToKeep'. You passed in '" .. tostring(options.headers) .. "' of type '" .. type(options.headers) .. "'.")
@@ -854,14 +855,14 @@ end
 
 ---@package
 ---@class encodeOptions
----@field delimiter? string
----@field fieldsToKeep? string[]
----@field onlyRequiredQuotes? boolean
----@field encodeNilAs string|number|boolean|nil
----@field allowMissingKeys? string[]
+---@field delimiter? string the delimiter in the encoded output can be changed by setting a value for `delimiter`, by default it is `,`
+---@field fieldsToKeep? string[] if `fieldsToKeep` is set in the encode process, only the fields specified will be written out to a file. The `fieldsToKeep` will be written out in the order that is specified.
+---@field onlyRequiredQuotes? boolean if `onlyRequiredQuotes` is set to `true`, the output will only include quotes around fields that are quotes, have newlines, or contain the delimiter.
+---@field encodeNilAs string|number|boolean|nil The value a `nil` value in the a table can be set with `encodeNilAs`. By default a `nil` value in a table will be encoded as the string `"nil"`.
+---@field allowMissingKeys? boolean If set to a non-`nil` value, this option allows encoding data sets that are entirely missing a field that was specified in `fieldsToKeep`. Otherwise, ftcsv would raise an error.
+---@field headers? boolean If set to `false` it only outputs the data without the headers. This can be useful for streaming a CSV in chunks.
 
--- works really quickly with luajit-2.1, because table.concat life
---- takes in a lua table and turns it into a text string that can be written to a file.
+-- takes in a lua table, encodes it as csv, and returns a string that can be written to a file.
 ---@param inputTable table[]
 ---@param delimiter? string
 ---@param options? encodeOptions
@@ -869,9 +870,11 @@ end
 function ftcsv.encode(inputTable, delimiter, options)
     local delimiter, options = determineArgumentOrder(delimiter, options)
     local output, headers = initializeGenerator(inputTable, delimiter, options)
+    local offset = 1
+    if options and options.headers == false then offset = 0 end
 
     for i, line in csvLineGenerator(inputTable, delimiter, headers, options) do
-        output[i+1] = line
+        output[i+offset] = line
     end
 
     -- combine and return final string
