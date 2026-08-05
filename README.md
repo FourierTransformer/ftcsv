@@ -149,7 +149,7 @@ file:close()
 ### Options
 - `delimiter`
 
-  by default the encoder uses a `,` as a delimiter. The delimiter can be changed by setting a value for `delimiter`
+  the delimiter in the encoded output can be changed by setting a value for `delimiter`, by default it is `,`
 
   ```lua
   local output = ftcsv.encode(everyUser, {delimiter="\t"})
@@ -165,7 +165,7 @@ file:close()
 
 - `onlyRequiredQuotes`
 
-  if `onlyRequiredQuotes` is set to `true`, the output will only include quotes around fields that are quotes, have newlines, or contain the delimter.
+  if `onlyRequiredQuotes` is set to `true`, the output will only include quotes around fields that are quotes, have newlines, or contain the delimiter.
 
   ```lua
   local output = ftcsv.encode(everyUser, {onlyRequiredQuotes=true})
@@ -173,7 +173,7 @@ file:close()
 
 - `encodeNilAs`
 
-  by default a `nil` value in a table will be encoded as the string `"nil"`. The value a `nil` value in the a table can be set with `encodeNilAs`.
+  the value a `nil` value in the a table can be set with `encodeNilAs`. By default a `nil` value in a table will be encoded as the string `"nil"`.
 
   ```lua
   local output = ftcsv.encode(everyUser, {encodeNilAs=""}) -- for setting nil to the empty string
@@ -182,7 +182,7 @@ file:close()
 
 - `allowMissingKeys`
 
-  If set to a non-`nil` value, this option allows encoding data sets that are entirely missing a field that was specified in `fieldsToKeep`. Otherwise, ftcsv would raise an error.
+  If set to `true`, this option allows encoding data sets that are entirely missing a field that was specified in `fieldsToKeep`. Otherwise, ftcsv would raise an error.
 
   ```lua
   local data = {
@@ -199,6 +199,12 @@ file:close()
   --> "100","nil","200","nil"
   --> ]]
   ```
+
+- `headers`
+
+If set to `false` it only outputs the data without the headers. This can be useful for streaming a CSV in chunks.
+
+To ensure a correct data layout, this option must be used with `fieldsToKeep` set to a constant ordering throughout the loop.
 
 ## Error Handling
 ftcsv returns a litany of errors when passed a bad csv file or incorrect parameters. You can find a more detailed explanation of the more cryptic errors in [ERRORS.md](ERRORS.md)
